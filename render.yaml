@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: konosuba-bot-website
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PORT
+        value: 3000
+    autoDeploy: true
+    healthCheckPath: /api/stats
