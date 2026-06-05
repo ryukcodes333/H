@@ -1,51 +1,35 @@
-// auth.js — JWT auth helpers shared across all pages
-
+// auth.js — JWT auth helpers
 (function () {
   'use strict'
-
-  const KEY_TOKEN = 'kono_token'
-  const KEY_USER  = 'kono_user'
+  const KEY = 'kono_token'
+  const UKEY = 'kono_user'
 
   window.KonoAuth = {
-    getToken() { return localStorage.getItem(KEY_TOKEN) },
+    getToken() { return localStorage.getItem(KEY) },
     getUser()  {
-      try { return JSON.parse(localStorage.getItem(KEY_USER)) }
-      catch { return null }
+      try { return JSON.parse(localStorage.getItem(UKEY) || 'null') } catch { return null }
     },
     isLoggedIn() { return !!this.getToken() },
-
     save(token, user) {
-      localStorage.setItem(KEY_TOKEN, token)
-      localStorage.setItem(KEY_USER, JSON.stringify(user))
+      localStorage.setItem(KEY, token)
+      localStorage.setItem(UKEY, JSON.stringify(user))
     },
-
     logout() {
-      localStorage.removeItem(KEY_TOKEN)
-      localStorage.removeItem(KEY_USER)
+      localStorage.removeItem(KEY)
+      localStorage.removeItem(UKEY)
       window.location.href = '/login'
     },
-
+    headers() {
+      return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.getToken() }
+    },
+    async fetch(url, opts = {}) {
+      const res = await fetch(url, { ...opts, headers: this.headers() })
+      if (res.status === 401) { this.logout(); return null }
+      return res
+    },
     requireAuth() {
       if (!this.isLoggedIn()) { window.location.href = '/login'; return false }
       return true
-    },
-
-    redirectIfLoggedIn() {
-      if (this.isLoggedIn()) { window.location.href = '/profile'; return true }
-      return false
-    },
-
-    async apiFetch(url, options = {}) {
-      const token = this.getToken()
-      const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
-      if (token) headers['Authorization'] = `Bearer ${token}`
-      const res = await fetch(url, { ...options, headers })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Request failed')
-      return data
     }
   }
-
-  // Expose a convenience fetch
-  window.apiFetch = (url, opts) => KonoAuth.apiFetch(url, opts)
 })()

@@ -1,137 +1,147 @@
-// nav.js — Shared navigation injected on every page
-
+// nav.js — Shared nav + particles + toast
 (function () {
   'use strict'
 
-  const NAV_ITEMS = [
-    { href: '/',           icon: 'fas fa-home',          label: 'Home' },
-    { href: '/shop',       icon: 'fas fa-store',         label: 'Shop' },
-    { href: null,          icon: null,                   label: 'Menu', isMenu: true },
-    { href: '/cards',      icon: 'fas fa-id-card',       label: 'Cards' },
-    { href: '/pokemons',   icon: 'fas fa-dragon',        label: 'Pokémon' },
-  ]
-
-  const MENU_SECTIONS = [
-    {
-      title: 'Explore',
-      items: [
-        { href: '/',           icon: 'fas fa-home',      label: 'Home' },
-        { href: '/shop',       icon: 'fas fa-store',     label: 'Shop' },
-        { href: '/leaderboard',icon: 'fas fa-trophy',    label: 'Leaderboard' },
-        { href: '/cards',      icon: 'fas fa-id-card',   label: 'Cards' },
-        { href: '/pokemons',   icon: 'fas fa-dragon',    label: 'Pokémon' },
-        { href: '/daily',      icon: 'fas fa-gift',      label: 'Daily Reward' },
-      ]
-    },
-    {
-      title: 'Account',
-      items: [
-        { href: '/profile',  icon: 'fas fa-user',        label: 'My Profile' },
-        { href: '/signup',   icon: 'fas fa-user-plus',   label: 'Sign Up' },
-        { href: '/login',    icon: 'fas fa-right-to-bracket', label: 'Login' },
-      ]
+  // ── Particles ──────────────────────────────────────────
+  function spawnParticles() {
+    const el = document.getElementById('particles')
+    if (!el) return
+    for (let i = 0; i < 30; i++) {
+      const p = document.createElement('div')
+      p.className = 'particle'
+      p.style.cssText = `
+        left:${Math.random()*100}%;
+        width:${1+Math.random()*3}px;
+        height:${1+Math.random()*3}px;
+        animation-duration:${6+Math.random()*10}s;
+        animation-delay:${Math.random()*8}s;
+        opacity:0;
+      `
+      el.appendChild(p)
     }
-  ]
+  }
 
-  function currentPath() { return window.location.pathname.replace(/\/$/, '') || '/' }
+  // ── Toast ──────────────────────────────────────────────
+  window.showToast = function(msg, type = '') {
+    let c = document.getElementById('toast-container')
+    if (!c) { c = document.createElement('div'); c.id = 'toast-container'; document.body.appendChild(c) }
+    const t = document.createElement('div')
+    t.className = 'toast ' + type
+    t.textContent = msg
+    c.appendChild(t)
+    setTimeout(() => t.remove(), 3200)
+  }
 
-  function isActive(href) {
-    const p = currentPath()
-    return (href === '/' ? p === '/' : p.startsWith(href)) ? 'active' : ''
+  // ── Nav HTML ───────────────────────────────────────────
+  function currentPage() {
+    const p = window.location.pathname.replace('/', '') || 'index'
+    return p
+  }
+  function isActive(page) {
+    const cur = currentPage()
+    return cur === page || (page === 'index' && cur === '') ? 'active' : ''
   }
 
   function injectNav() {
     // Bottom nav
     const nav = document.createElement('nav')
-    nav.className = 'bottom-nav'
-    nav.innerHTML = NAV_ITEMS.map(item => {
-      if (item.isMenu) return `
-        <button class="nav-item nav-menu-btn" onclick="KonoNav.toggle()" aria-label="Menu">
-          <div class="menu-dot"><i class="fas fa-bars"></i></div>
-          <span>Menu</span>
-        </button>`
-      return `
-        <a href="${item.href}" class="nav-item ${isActive(item.href)}">
-          <i class="${item.icon}"></i>
-          <span>${item.label}</span>
-        </a>`
-    }).join('')
+    nav.className = 'nav-bottom'
+    nav.innerHTML = `
+      <a href="/" class="nav-item ${isActive('index')}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>Home
+      </a>
+      <a href="/cards" class="nav-item ${isActive('cards')}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>Cards
+      </a>
+      <button class="nav-center-btn" id="nav-menu-btn" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+      <a href="/leaderboard" class="nav-item ${isActive('leaderboard')}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>Board
+      </a>
+      <a href="/profile" class="nav-item ${isActive('profile')}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>Profile
+      </a>
+    `
     document.body.appendChild(nav)
 
-    // Menu overlay
-    const overlay = document.createElement('div')
-    overlay.id = 'menuOverlay'
-    overlay.className = 'menu-overlay'
-    overlay.addEventListener('click', e => { if (e.target === overlay) KonoNav.close() })
+    // Slide menu
+    const menu = document.createElement('div')
+    menu.className = 'slide-menu'
+    menu.id = 'slide-menu'
+    menu.innerHTML = `
+      <div class="slide-menu-header">
+        <span class="slide-menu-title">✦ Shadow Garden</span>
+        <button class="close-btn" id="nav-close-btn">✕</button>
+      </div>
+      <div class="menu-links">
+        <a href="/" class="menu-link"><span class="menu-link-icon">🏠</span>Home</a>
+        <a href="/profile" class="menu-link"><span class="menu-link-icon">👤</span>My Profile</a>
+        <a href="/shop" class="menu-link"><span class="menu-link-icon">🛒</span>Item Shop</a>
+        <a href="/leaderboard" class="menu-link"><span class="menu-link-icon">🏆</span>Leaderboard</a>
+        <a href="/cards" class="menu-link"><span class="menu-link-icon">🃏</span>Card Gallery</a>
+        <a href="/pokemons" class="menu-link"><span class="menu-link-icon">⚡</span>Pokédex</a>
+        <a href="/daily" class="menu-link"><span class="menu-link-icon">🎁</span>Daily Reward</a>
+        <a href="/login" class="menu-link" id="nav-auth-btn"><span class="menu-link-icon">🔑</span>Login</a>
+      </div>
+    `
+    document.body.appendChild(menu)
 
-    const sectionsHtml = MENU_SECTIONS.map(sec => `
-      <div class="menu-section">
-        <div class="menu-section-title">${sec.title}</div>
-        ${sec.items.map(item => {
-          const active = isActive(item.href)
-          return `<a href="${item.href}" class="menu-link ${active}" onclick="KonoNav.close()">
-            <i class="${item.icon}"></i> ${item.label}
-          </a>`
-        }).join('')}
-      </div>`).join('')
+    // Toast container
+    const tc = document.createElement('div')
+    tc.id = 'toast-container'
+    document.body.appendChild(tc)
 
-    const user = KonoAuth.getUser()
-    const brandSub = user ? `Logged in as ${user.name}` : 'Konosuba Community Bot'
+    // Events
+    document.getElementById('nav-menu-btn').addEventListener('click', () => {
+      menu.classList.add('open')
+    })
+    document.getElementById('nav-close-btn').addEventListener('click', () => {
+      menu.classList.remove('open')
+    })
+    menu.addEventListener('click', e => {
+      if (e.target === menu) menu.classList.remove('open')
+    })
 
-    overlay.innerHTML = `
-      <div class="menu-sheet" id="menuSheet">
-        <div class="menu-handle"></div>
-        <div class="menu-brand">
-          <img src="/img/icon.jpg" alt="Konosuba Bot" onerror="this.style.display='none'">
-          <div>
-            <div class="menu-brand-name gradient-text">Konosuba Bot</div>
-            <div class="menu-brand-sub">${brandSub}</div>
-          </div>
-        </div>
-        ${sectionsHtml}
-        ${user ? `<div class="menu-section">
-          <button class="menu-link" onclick="KonoAuth.logout(); KonoNav.close();" style="color:#fca5a5;">
-            <i class="fas fa-right-from-bracket" style="color:#fca5a5;"></i> Logout
-          </button>
-        </div>` : ''}
-      </div>`
-
-    document.body.appendChild(overlay)
+    // Auth button
+    const user = window.KonoAuth?.getUser()
+    const authBtn = document.getElementById('nav-auth-btn')
+    if (user && authBtn) {
+      authBtn.href = '#'
+      authBtn.innerHTML = '<span class="menu-link-icon">🚪</span>Logout (' + (user.name || 'You') + ')'
+      authBtn.addEventListener('click', e => { e.preventDefault(); window.KonoAuth.logout() })
+    }
   }
 
-  function injectToast() {
-    const t = document.createElement('div')
-    t.id = 'toast'
-    document.body.appendChild(t)
+  // Particles container
+  function injectParticles() {
+    if (!document.getElementById('particles')) {
+      const d = document.createElement('div')
+      d.id = 'particles'
+      document.body.prepend(d)
+    }
   }
 
   window.KonoNav = {
     toggle() {
-      const o = document.getElementById('menuOverlay')
-      if (o.classList.contains('open')) this.close()
-      else this.open()
-    },
-    open() {
-      document.getElementById('menuOverlay').classList.add('open')
-      document.body.style.overflow = 'hidden'
-    },
-    close() {
-      document.getElementById('menuOverlay').classList.remove('open')
-      document.body.style.overflow = ''
+      const m = document.getElementById('slide-menu')
+      if (m) m.classList.toggle('open')
     }
   }
 
-  window.showToast = function (msg, type = '', duration = 3000) {
-    const t = document.getElementById('toast')
-    if (!t) return
-    t.textContent = msg
-    t.className = `show${type ? ' ' + type : ''}`
-    clearTimeout(t._timer)
-    t._timer = setTimeout(() => { t.className = '' }, duration)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => { injectParticles(); injectNav(); spawnParticles() })
+  } else {
+    injectParticles(); injectNav(); spawnParticles()
   }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    injectNav()
-    injectToast()
-  })
 })()
