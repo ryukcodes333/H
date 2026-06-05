@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shop — Shadow Garden</title>
+<link rel="stylesheet" href="/css/style.css">
+<script src="/js/auth.js"></script>
+</head>
+<body>
+<div class="page">
+  <div class="page-header">
+    <div class="page-header-title">🛒 Item Shop</div>
+    <div class="page-header-sub">Spend your coins on weapons, armor & tools</div>
+  </div>
+
+  <div class="section" style="padding-top:16px">
+    <!-- Balance -->
+    <div class="card-panel mb-12" id="balance-panel" style="display:flex;align-items:center;gap:12px">
+      <div style="font-size:28px">💰</div>
+      <div>
+        <div style="font-size:20px;font-weight:700" id="wallet-display">—</div>
+        <div style="font-size:12px;color:var(--muted)">Your wallet</div>
+      </div>
+      <div style="margin-left:auto">
+        <a href="/login" id="login-prompt" class="btn btn-sm btn-outline" style="display:none">Login to buy</a>
+      </div>
+    </div>
+
+    <!-- Type filter tabs -->
+    <div class="type-tabs" id="type-tabs">
+      <button class="type-tab active" data-type="all">All</button>
+      <button class="type-tab" data-type="weapon">⚔️ Weapons</button>
+      <button class="type-tab" data-type="armor">🛡️ Armor</button>
+      <button class="type-tab" data-type="consumable">🧪 Consumables</button>
+      <button class="type-tab" data-type="tool">🔧 Tools</button>
+      <button class="type-tab" data-type="accessory">💍 Accessories</button>
+      <button class="type-tab" data-type="banking">🏦 Banking</button>
+    </div>
+
+    <!-- Items grid -->
+    <div class="shop-grid" id="shop-grid">
+      <div class="spinner" style="grid-column:1/-1"><div class="spinner-ring"></div></div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/nav.js"></script>
+<script>
+let allItems = []
+let currentType = 'all'
+let userWallet = null
+
+async function loadWallet() {
+  if (!window.KonoAuth.isLoggedIn()) {
+    document.getElementById('wallet-display').textContent = 'Login to see balance'
+    document.getElementById('login-prompt').style.display = 'inline-flex'
+    return
+  }
+  try {
+    const res = await window.KonoAuth.fetch('/api/profile')
+    if (!res) return
+    const data = await res.json()
+    userWallet = data.user?.wallet || 0
+    document.getElementById('wallet-display').textContent = userWallet.toLocaleString() + ' coins'
+  } catch {}
+}
+
+async function loadShop() {
+  const res = await fetch('/api/shop')
+  const data = await res.json()
+  allItems = data.items || []
+  renderItems()
+}
+
+function renderItems() {
+  const grid = document.getElementById('shop-grid')
+  const filtered = currentType === 'all' ? allItems : allItems.filter(i => i.type === currentType)
+  if (!filtered.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">📦</div><h3>No items</h3></div>'; return }
+  grid.innerHTML = filtered.map(item => {
+    const canAfford = userWallet !== null && userWallet >= item.price
+    const loggedIn = window.KonoAuth.isLoggedIn()
+    return `
+      <div class="shop-item">
+        <div class="shop-emoji">${item.emoji}</div>
+        <div class="shop-name">${item.name}</div>
+        <div class="shop-desc">${item.desc}</div>
+        <div class="shop-price">💰 ${item.price.toLocaleString()}</div>
+        <button class="btn btn-sm ${canAfford||!loggedIn?'btn-primary':'btn-ghost'}"
+          ${!loggedIn?`onclick="window.location='/login'"`:
+            canAfford?`onclick="buyItem('${item.id}','${item.name}',${item.price})"`:
+            'disabled'}
+          style="width:100%">
+          ${!loggedIn ? 'Login' : canAfford ? 'Buy' : 'Not enough 💰'}
+        </button>
+      </div>`
+  }).join('')
+}
+
+async function buyItem(id, name, price) {
+  if (!confirm(`Buy ${name} for ${price.toLocaleString()} coins?`)) return
+  const res = await window.KonoAuth.fetch('/api/shop/buy', { method:'POST', body: JSON.stringify({ item_id: id }) })
+  if (!res) return
+  const data = await res.json()
+  if (!res.ok) { showToast(data.error||'Failed', 'error'); return }
+  showToast(data.message || 'Purchased!', 'success')
+  userWallet = (userWallet||0) - price
+  document.getElementById('wallet-display').textContent = userWallet.toLocaleString() + ' coins'
+  renderItems()
+}
+
+document.getElementById('type-tabs').addEventListener('click', e => {
+  const btn = e.target.closest('.type-tab')
+  if (!btn) return
+  currentType = btn.dataset.type
+  document.querySelectorAll('.type-tab').forEach(b => b.classList.toggle('active', b===btn))
+  renderItems()
+})
+
+Promise.all([loadWallet(), loadShop()])
+</script>
+</body>
+</html>

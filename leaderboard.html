@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leaderboard — Shadow Garden</title>
+<link rel="stylesheet" href="/css/style.css">
+<script src="/js/auth.js"></script>
+</head>
+<body>
+<div class="page">
+  <div class="page-header">
+    <div class="page-header-title">🏆 Leaderboard</div>
+    <div class="page-header-sub">Top 50 players from the Shadow Garden community</div>
+  </div>
+
+  <div class="section" style="padding-top:16px">
+    <div class="lb-filter-row">
+      <button class="lb-filter-btn active" data-type="xp" onclick="loadLB('xp',this)">⚡ XP</button>
+      <button class="lb-filter-btn" data-type="level" onclick="loadLB('level',this)">⭐ Level</button>
+      <button class="lb-filter-btn" data-type="coins" onclick="loadLB('coins',this)">💰 Coins</button>
+      <button class="lb-filter-btn" data-type="wins" onclick="loadLB('wins',this)">⚔️ Pokémon Wins</button>
+      <button class="lb-filter-btn" data-type="rep" onclick="loadLB('rep',this)">📊 Reputation</button>
+    </div>
+
+    <div id="lb-list">
+      <div class="spinner"><div class="spinner-ring"></div></div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/nav.js"></script>
+<script>
+const myPhone = window.KonoAuth.getUser()?.phone
+
+function formatVal(user, type) {
+  if (type === 'xp')    return (user.xp||0).toLocaleString() + ' XP'
+  if (type === 'level') return 'Lv.' + (user.level||1)
+  if (type === 'coins') return '💰 ' + ((Number(user.bank||0)+Number(user.wallet||0)).toLocaleString())
+  if (type === 'wins')  return '⚔️ ' + (user.pokemon_wins||0) + ' wins'
+  if (type === 'rep')   return '📊 ' + (user.reputation||0) + ' rep'
+  return ''
+}
+
+async function loadLB(type, btn) {
+  document.querySelectorAll('.lb-filter-btn').forEach(b=>b.classList.remove('active'))
+  if (btn) btn.classList.add('active')
+  const list = document.getElementById('lb-list')
+  list.innerHTML = '<div class="spinner"><div class="spinner-ring"></div></div>'
+  try {
+    const res = await fetch('/api/leaderboard?type='+type)
+    const data = await res.json()
+    const users = data.users || []
+    if (!users.length) { list.innerHTML = '<div class="empty"><div class="empty-icon">🏆</div><h3>No data yet</h3></div>'; return }
+    const medals = ['🥇','🥈','🥉']
+    const rankClass = i => i===0?'gold':i===1?'silver':i===2?'bronze':''
+    list.innerHTML = users.map((u,i) => {
+      const isMe = u.phone === myPhone
+      return `<div class="lb-row${isMe?' glow':''}">
+        <div class="lb-rank ${rankClass(i)}">${i<3?medals[i]:(i+1)}</div>
+        <div class="lb-avatar">${u.name?u.name.charAt(0).toUpperCase():'?'}</div>
+        <div class="lb-info">
+          <div class="lb-name">${u.name||'Adventurer'}${isMe?' (You)':''}</div>
+          <div class="lb-sub">${u.title||'Newcomer'} · Lv.${u.level||1}</div>
+        </div>
+        <div class="lb-val">${formatVal(u,type)}</div>
+      </div>`
+    }).join('')
+  } catch { list.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><h3>Failed to load</h3></div>' }
+}
+
+loadLB('xp')
+</script>
+</body>
+</html>

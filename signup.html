@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign Up — Shadow Garden</title>
+<link rel="stylesheet" href="/css/style.css">
+<script src="/js/auth.js"></script>
+</head>
+<body>
+<div class="page" style="min-height:100vh;display:flex;align-items:center;padding:24px 0">
+  <div class="form-wrap" style="width:100%">
+    <div class="form-card fade-up">
+      <div class="form-logo">
+        <img src="/img/icon.jpg" onerror="this.style.display='none'" alt="Logo">
+      </div>
+      <h2 class="form-title">Join Shadow Garden ✦</h2>
+      <p class="form-subtitle">Link your WhatsApp bot account to the web dashboard</p>
+
+      <div class="info-box">
+        💡 <strong>Already use the bot?</strong><br>
+        If you've already set a password with <code>.reg (name) | (password)</code>, just go to <a href="/login" class="form-link">Login</a> instead.<br><br>
+        📱 <strong>New here?</strong> Sign up below — enter your WhatsApp number and create a password. Then use the same password when typing <code>.reg (name) | (password)</code> in the bot so both are linked.
+      </div>
+
+      <form id="signup-form">
+        <div class="form-group">
+          <label class="form-label">Display Name</label>
+          <input type="text" id="name" class="form-input" placeholder="Your name (e.g. Kazuma)" autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">WhatsApp Number (with country code)</label>
+          <input type="tel" id="phone" class="form-input" placeholder="e.g. 2348012345678" autocomplete="tel">
+          <div class="form-hint">Type <strong>.myid</strong> in the bot to get your number</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="password" class="form-input" placeholder="Choose a password (min 4 chars)" autocomplete="new-password">
+          <div class="form-hint">Use this same password in <code>.reg (name) | (password)</code> on WhatsApp</div>
+        </div>
+        <button type="submit" class="btn btn-primary w-full" id="signup-btn">Create Account ✦</button>
+      </form>
+
+      <div class="form-footer">
+        Already have an account? <a href="/login" class="form-link">Login</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/nav.js"></script>
+<script>
+if (window.KonoAuth.isLoggedIn()) window.location.href = '/profile'
+
+document.getElementById('signup-form').addEventListener('submit', async e => {
+  e.preventDefault()
+  const btn = document.getElementById('signup-btn')
+  btn.disabled = true; btn.textContent = 'Creating account…'
+  const name     = document.getElementById('name').value.trim()
+  const phone    = document.getElementById('phone').value.trim()
+  const password = document.getElementById('password').value
+  try {
+    const res = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, phone, password })
+    })
+    const data = await res.json()
+    if (!res.ok) { showToast(data.error || 'Signup failed', 'error'); btn.disabled=false; btn.textContent='Create Account ✦'; return }
+    window.KonoAuth.save(data.token, data.user)
+    showToast('Welcome to Shadow Garden, ' + (data.user.name || 'Adventurer') + '! ✦', 'success')
+    setTimeout(() => { window.location.href = '/profile' }, 900)
+  } catch { showToast('Connection error', 'error'); btn.disabled=false; btn.textContent='Create Account ✦' }
+})
+</script>
+</body>
+</html>

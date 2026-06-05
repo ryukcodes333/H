@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shadow Garden Bot</title>
+<link rel="stylesheet" href="/css/style.css">
+<script src="/js/auth.js"></script>
+</head>
+<body>
+<div class="page">
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <img class="hero-chars-left" src="https://i.imgur.com/RXp1xYO.png" onerror="this.style.display='none'" alt="">
+    <img class="hero-chars-right" src="https://i.imgur.com/HN3MZAQ.png" onerror="this.style.display='none'" alt="">
+    <div class="hero-content fade-up">
+      <div class="hero-badge">✦ Shadow Garden Community ✦</div>
+      <h1 class="hero-title">Konosuba<br>Bot Dashboard</h1>
+      <p class="hero-sub">Cards, Pokémon, economy, leaderboards — all your WhatsApp bot data in one place.</p>
+      <div class="hero-btns">
+        <a href="/signup" class="btn btn-primary">Get Started ✦</a>
+        <a href="/cards" class="btn btn-outline">Card Gallery</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <section class="section" style="padding-top:0">
+    <div class="stats-row" id="stats-row">
+      <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value" id="s-users">—</div><div class="stat-label">Members</div></div>
+      <div class="stat-card"><div class="stat-icon">🃏</div><div class="stat-value" id="s-cards">—</div><div class="stat-label">Cards Owned</div></div>
+      <div class="stat-card"><div class="stat-icon">⚡</div><div class="stat-value" id="s-poke">—</div><div class="stat-label">Pokémon Caught</div></div>
+      <div class="stat-card"><div class="stat-icon">🗂️</div><div class="stat-value" id="s-pool">—</div><div class="stat-label">Card Pool</div></div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="section" style="padding-top:0">
+    <h2 class="section-title">Explore</h2>
+    <div class="features-grid">
+      <a href="/profile" class="feature-card">
+        <div class="feature-icon">👤</div>
+        <div class="feature-name">Profile</div>
+        <div class="feature-desc">View your stats, cards, Pokémon, inventory & more</div>
+      </a>
+      <a href="/shop" class="feature-card">
+        <div class="feature-icon">🛒</div>
+        <div class="feature-name">Item Shop</div>
+        <div class="feature-desc">Spend your coins on weapons, armor & tools</div>
+      </a>
+      <a href="/leaderboard" class="feature-card">
+        <div class="feature-icon">🏆</div>
+        <div class="feature-name">Leaderboard</div>
+        <div class="feature-desc">Top 50 players ranked by XP, coins, level & more</div>
+      </a>
+      <a href="/cards" class="feature-card">
+        <div class="feature-icon">🃏</div>
+        <div class="feature-name">Cards</div>
+        <div class="feature-desc">Browse 100K+ anime cards from Mazoku & Shoob</div>
+      </a>
+      <a href="/pokemons" class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <div class="feature-name">Pokédex</div>
+        <div class="feature-desc">All 1,025 Pokémon with stats, types & abilities</div>
+      </a>
+      <a href="/daily" class="feature-card">
+        <div class="feature-icon">🎁</div>
+        <div class="feature-name">Daily Reward</div>
+        <div class="feature-desc">Claim your daily coins & gems, build your streak</div>
+      </a>
+    </div>
+  </section>
+
+  <!-- Bot commands hint -->
+  <section class="section" style="padding-top:0;padding-bottom:0">
+    <div class="card-panel">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:12px">🤖 Bot Quick Commands</h3>
+      <div style="display:grid;gap:8px;font-size:13px;color:var(--muted)">
+        <div><code style="color:var(--cyan);background:rgba(34,211,238,.1);padding:2px 8px;border-radius:6px">.myid</code> — Get your WhatsApp ID to login here</div>
+        <div><code style="color:var(--cyan);background:rgba(34,211,238,.1);padding:2px 8px;border-radius:6px">.reg (name) | (password)</code> — Register & set web password</div>
+        <div><code style="color:var(--cyan);background:rgba(34,211,238,.1);padding:2px 8px;border-radius:6px">.p</code> — Generate your profile card</div>
+        <div><code style="color:var(--cyan);background:rgba(34,211,238,.1);padding:2px 8px;border-radius:6px">.daily</code> — Claim daily coins & gems</div>
+        <div><code style="color:var(--cyan);background:rgba(34,211,238,.1);padding:2px 8px;border-radius:6px">.setpp</code> — Set profile picture (or do it on the web)</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="/js/nav.js"></script>
+<script>
+fetch('/api/stats').then(r=>r.json()).then(d=>{
+  const fmt = n => n>=1000 ? (n/1000).toFixed(1)+'K' : n
+  document.getElementById('s-users').textContent = fmt(d.totalUsers||0)
+  document.getElementById('s-cards').textContent = fmt(d.totalCards||0)
+  document.getElementById('s-poke').textContent  = fmt(d.totalPokemon||0)
+  const pool = (d.cardPoolMazoku||0)+(d.cardPoolShoob||0)
+  document.getElementById('s-pool').textContent  = fmt(pool)
+}).catch(()=>{})
+</script>
+</body>
+</html>

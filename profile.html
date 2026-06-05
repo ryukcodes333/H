@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile — Shadow Garden</title>
+<link rel="stylesheet" href="/css/style.css">
+<script src="/js/auth.js"></script>
+</head>
+<body>
+<div class="page">
+  <!-- Cover -->
+  <div class="profile-cover" id="cover-wrap">
+    <div class="profile-cover-placeholder" id="cover-placeholder"></div>
+    <img id="cover-img" style="display:none" alt="Cover">
+    <div class="cover-overlay"></div>
+  </div>
+
+  <!-- Header (avatar, name, actions) -->
+  <div class="profile-body">
+    <div class="profile-header">
+      <div class="profile-avatar-wrap" id="avatar-wrap">
+        <div class="avatar-placeholder" id="avatar-placeholder">🧙</div>
+        <img id="avatar-img" class="profile-avatar" style="display:none" alt="Avatar">
+        <!-- Frame ring (SVG or image) -->
+        <canvas id="frame-canvas" class="profile-frame-ring" width="120" height="120" style="position:absolute;inset:-5px;width:120px;height:120px;pointer-events:none"></canvas>
+      </div>
+      <div class="profile-name" id="pname">Loading…</div>
+      <div class="profile-bio" id="pbio"></div>
+      <div class="profile-phone" id="pphone"></div>
+      <div class="profile-actions">
+        <button class="pact-btn" onclick="triggerAvatarUpload()">Edit Avatar</button>
+        <button class="pact-btn" onclick="triggerCoverUpload()">Edit Cover</button>
+        <button class="pact-btn" onclick="openFramePicker()">Edit Frame</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="profile-stats-grid">
+      <div class="pstat">
+        <div class="pstat-icon">💰</div>
+        <div class="pstat-right"><div class="pstat-val" id="stat-wallet">$0</div><div class="pstat-lbl">Wallet</div></div>
+      </div>
+      <div class="pstat">
+        <div class="pstat-icon">🏦</div>
+        <div class="pstat-right"><div class="pstat-val" id="stat-bank">$0</div><div class="pstat-lbl">Bank</div></div>
+      </div>
+      <div class="pstat">
+        <div class="pstat-icon">⭐</div>
+        <div class="pstat-right"><div class="pstat-val" id="stat-level">1</div><div class="pstat-lbl">Level</div></div>
+      </div>
+      <div class="pstat">
+        <div class="pstat-icon">⚡</div>
+        <div class="pstat-right"><div class="pstat-val" id="stat-xp">0</div><div class="pstat-lbl">XP</div></div>
+      </div>
+    </div>
+
+    <!-- XP bar -->
+    <div class="xp-bar-wrap">
+      <div class="xp-bar-labels">
+        <span id="xp-cur">0 XP</span><span id="xp-need">/ 1000</span>
+      </div>
+      <div class="xp-bar-track"><div class="xp-bar-fill" id="xp-fill" style="width:0%"></div></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="profile-tabs">
+      <button class="ptab active" data-tab="overview">Overview</button>
+      <button class="ptab" data-tab="deck">Deck</button>
+      <button class="ptab" data-tab="inventory">Inventory</button>
+      <button class="ptab" data-tab="pokemon">Pokémon</button>
+      <button class="ptab" data-tab="wishlist">Wishlist</button>
+    </div>
+
+    <!-- Overview -->
+    <div class="tab-content active" id="tab-overview">
+      <div class="card-panel mb-12">
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--muted)">🏅 Achievements</h3>
+        <div class="achievements-grid" id="achievements-wrap">
+          <div class="achievement"><div class="achievement-icon">🌱</div><div class="achievement-name">Joined</div></div>
+          <div class="achievement" id="ach-level10"><div class="achievement-icon">⭐</div><div class="achievement-name">Level 10</div></div>
+          <div class="achievement" id="ach-collector"><div class="achievement-icon">🃏</div><div class="achievement-name">Collector</div></div>
+          <div class="achievement" id="ach-trainer"><div class="achievement-icon">⚡</div><div class="achievement-name">Trainer</div></div>
+          <div class="achievement" id="ach-rich"><div class="achievement-icon">💰</div><div class="achievement-name">Wealthy</div></div>
+          <div class="achievement" id="ach-streak7"><div class="achievement-icon">🔥</div><div class="achievement-name">7-Day Streak</div></div>
+        </div>
+      </div>
+      <div class="card-panel">
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--muted)">📊 Detailed Stats</h3>
+        <div style="display:grid;gap:10px;font-size:13px" id="extra-stats"></div>
+      </div>
+    </div>
+
+    <!-- Deck -->
+    <div class="tab-content" id="tab-deck">
+      <div class="mini-cards-grid" id="deck-grid">
+        <div class="spinner"><div class="spinner-ring"></div></div>
+      </div>
+    </div>
+
+    <!-- Inventory -->
+    <div class="tab-content" id="tab-inventory">
+      <div class="inv-grid" id="inv-grid">
+        <div class="spinner"><div class="spinner-ring"></div></div>
+      </div>
+    </div>
+
+    <!-- Pokémon -->
+    <div class="tab-content" id="tab-pokemon">
+      <div class="poke-grid" id="poke-grid">
+        <div class="spinner"><div class="spinner-ring"></div></div>
+      </div>
+    </div>
+
+    <!-- Wishlist -->
+    <div class="tab-content" id="tab-wishlist">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Cards you've wishlisted from the Card Gallery will appear here.</p>
+      <div id="wishlist-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Frame picker modal -->
+<div class="modal-overlay" id="frame-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🖼️ Choose Frame</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Frames uploaded by staff via <code style="color:var(--cyan)">.uploadframe</code> in WhatsApp appear here.</p>
+    <div class="frames-grid" id="frames-grid">
+      <div class="spinner"><div class="spinner-ring"></div></div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:8px">
+      <button class="btn btn-primary btn-sm" onclick="applyFrame()">Apply Frame</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeFrameModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden file inputs -->
+<input type="file" id="avatar-input" accept="image/*" style="display:none">
+<input type="file" id="cover-input" accept="image/*" style="display:none">
+
+<script src="/js/nav.js"></script>
+<script>
+if (!window.KonoAuth.requireAuth()) {}
+
+const SHOP_EMOJIS = {sword:'⚔️',shield:'🛡️',bow:'🏹',dagger:'🗡️',axe:'🪓',staff_wep:'🪄',spear:'🔱',armor:'🥋',helmet:'⛑️',boots:'👟',potion:'🧪',elixir:'💙',energy:'⚡',antidote:'💊',bomb:'💣',ticket:'🎟️',pickaxe:'⛏️',fishingrod:'🎣',map:'🗺️',lantern:'🏮',ring:'💍',amulet:'📿',cloak:'🧣',bank_note:'💵',bank_note_100k:'💴',bank_note_500k:'💶',bank_note_1m:'💷'}
+
+let profileData = null
+let selectedFrameId = null
+let wishlist = []
+
+function fmtMoney(n) {
+  n = Number(n||0)
+  if (n>=1000000) return '$'+(n/1000000).toFixed(2)+'M'
+  if (n>=1000)    return '$'+(n/1000).toFixed(2)+'K'
+  return '$'+n
+}
+
+function drawFrame(canvas, color) {
+  if (!canvas) return
+  const ctx = canvas.getContext('2d')
+  const w = canvas.width, h = canvas.height
+  ctx.clearRect(0,0,w,h)
+  const cx = w/2, cy = h/2, r = w/2 - 4
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI*2)
+  ctx.strokeStyle = color || '#9333ea'
+  ctx.lineWidth = 5
+  ctx.stroke()
+  // inner glow
+  ctx.beginPath()
+  ctx.arc(cx, cy, r-4, 0, Math.PI*2)
+  ctx.strokeStyle = (color||'#9333ea')+'44'
+  ctx.lineWidth = 3
+  ctx.stroke()
+}
+
+async function loadProfile() {
+  const res = await window.KonoAuth.fetch('/api/profile')
+  if (!res) return
+  const data = await res.json()
+  if (data.error) { showToast(data.error, 'error'); return }
+  profileData = data
+  const u = data.user
+  wishlist = u.wishlist || []
+
+  // Name + badge
+  const roleCls = { owner:'badge-owner', mod:'badge-mod', guardian:'badge-guardian', member:'badge-member' }[u.role] || 'badge-member'
+  const roleLabel = (u.role||'member').charAt(0).toUpperCase()+(u.role||'member').slice(1)
+  document.getElementById('pname').innerHTML = (u.name||'Adventurer') + ` <span class="role-badge ${roleCls}">${roleLabel}</span>`
+  document.getElementById('pbio').textContent = u.bio || ''
+  document.getElementById('pphone').textContent = u.phone ? '+'+u.phone : ''
+
+  // Stats
+  document.getElementById('stat-wallet').textContent = fmtMoney(u.wallet)
+  document.getElementById('stat-bank').textContent   = fmtMoney(u.bank)
+  document.getElementById('stat-level').textContent  = u.level || 1
+  document.getElementById('stat-xp').textContent     = (u.xp||0).toLocaleString()
+
+  // XP bar
+  const xpNeed = (u.level||1)*1000
+  const pct = Math.min(100, Math.round(((u.xp||0)/xpNeed)*100))
+  document.getElementById('xp-cur').textContent = (u.xp||0).toLocaleString()+' XP'
+  document.getElementById('xp-need').textContent = '/ '+xpNeed.toLocaleString()
+  setTimeout(()=>{ document.getElementById('xp-fill').style.width = pct+'%' }, 200)
+
+  // Avatar
+  if (u.avatar_url) {
+    const img = document.getElementById('avatar-img')
+    img.src = u.avatar_url; img.style.display='block'
+    document.getElementById('avatar-placeholder').style.display='none'
+  }
+
+  // Cover
+  if (u.bg_url) {
+    const img = document.getElementById('cover-img')
+    img.src = u.bg_url; img.style.display='block'
+    document.getElementById('cover-placeholder').style.display='none'
+  }
+
+  // Frame (draw on canvas)
+  drawFrame(document.getElementById('frame-canvas'), '#9333ea')
+
+  // Extra stats
+  const extras = [
+    ['🏆','Rank',data.rank ? '#'+data.rank : '—'],
+    ['🔥','Streak',((u.streak||0)+' days')],
+    ['💎','Gems',(u.gems||0).toLocaleString()],
+    ['🃏','Cards Owned',(data.cards||[]).length],
+    ['⚡','Pokémon',(data.pokemon||[]).length],
+    ['📊','Rep',(u.reputation||0)],
+    ['👑','Title',u.title||'Newcomer'],
+    ['🎮','Class',u.class_name||'None'],
+  ]
+  document.getElementById('extra-stats').innerHTML = extras.map(([ic,lb,vl])=>
+    `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+      <span style="color:var(--muted)">${ic} ${lb}</span>
+      <span style="font-weight:600">${vl}</span>
+    </div>`
+  ).join('')
+
+  // Achievements
+  if ((u.level||1)>=10) document.getElementById('ach-level10').style.opacity='1'
+  else document.getElementById('ach-level10').style.opacity='.3'
+  if ((data.cards||[]).length>=10) document.getElementById('ach-collector').style.opacity='1'
+  else document.getElementById('ach-collector').style.opacity='.3'
+  if ((data.pokemon||[]).length>=5) document.getElementById('ach-trainer').style.opacity='1'
+  else document.getElementById('ach-trainer').style.opacity='.3'
+  if((Number(u.bank||0)+Number(u.wallet||0))>=100000) document.getElementById('ach-rich').style.opacity='1'
+  else document.getElementById('ach-rich').style.opacity='.3'
+  if((u.streak||0)>=7) document.getElementById('ach-streak7').style.opacity='1'
+  else document.getElementById('ach-streak7').style.opacity='.3'
+
+  // Deck tab
+  const cards = (data.cards||[]).filter(c=>c.card_id)
+  document.getElementById('deck-grid').innerHTML = cards.length
+    ? cards.map(c=>`<div class="mini-card"><img src="${c.card_id.image_url||''}" loading="lazy" onerror="this.src=''" alt="${c.card_id.name||'Card'}"><div class="mini-card-name">${c.card_id.name||'Card'}</div></div>`).join('')
+    : `<div class="empty"><div class="empty-icon">🃏</div><h3>No cards yet</h3><p>Earn cards in the bot</p></div>`
+
+  // Inventory tab
+  const inv = data.inventory||[]
+  document.getElementById('inv-grid').innerHTML = inv.length
+    ? inv.map(i=>`<div class="inv-item"><div class="inv-emoji">${SHOP_EMOJIS[i.item]||'📦'}</div><div class="inv-name">${i.item.replace(/_/g,' ')}</div><div class="inv-qty">×${i.quantity}</div></div>`).join('')
+    : `<div class="empty"><div class="empty-icon">🎒</div><h3>Empty inventory</h3><p>Buy items from the Shop</p></div>`
+
+  // Pokémon tab
+  const pokes = data.pokemon||[]
+  document.getElementById('poke-grid').innerHTML = pokes.length
+    ? pokes.map(p=>{
+        const img = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.pokemon_id}.png`
+        return `<div class="poke-card"><img class="poke-img" src="${img}" alt="${p.name}"><div class="poke-name">${p.name}</div><div class="poke-id">Lv.${p.level||1} ${p.is_shiny?'✨':''}</div></div>`
+      }).join('')
+    : `<div class="empty"><div class="empty-icon">⚡</div><h3>No Pokémon</h3><p>Catch some in the bot</p></div>`
+
+  // Wishlist tab
+  renderWishlist()
+}
+
+function renderWishlist() {
+  const grid = document.getElementById('wishlist-grid')
+  if (!wishlist.length) {
+    grid.innerHTML = `<div class="empty"><div class="empty-icon">💭</div><h3>Wishlist is empty</h3><p>Heart cards in the Card Gallery to add them</p></div>`
+    return
+  }
+  grid.innerHTML = `<div class="cards-grid">${wishlist.map(c=>`
+    <div class="card-thumb" style="position:relative">
+      <img src="${c.card_image||''}" loading="lazy" onerror="this.src=''" alt="${c.card_name}">
+      <span class="tier-badge tier-${(c.card_tier||'R').replace(/[^A-Za-z0-9]/g,'')}">${c.card_tier||'?'}</span>
+      <div class="card-thumb-info">
+        <div class="card-thumb-name">${c.card_name}</div>
+        <div class="card-thumb-tier">${c.card_series||''}</div>
+      </div>
+      <button class="wishlist-btn wishlisted" onclick="removeWishlist('${c.id}')" title="Remove">💔</button>
+    </div>`).join('')}</div>`
+}
+
+async function removeWishlist(id) {
+  const res = await window.KonoAuth.fetch('/api/wishlist/'+id, { method:'DELETE' })
+  if (!res) return
+  wishlist = wishlist.filter(c=>c.id!==id)
+  renderWishlist()
+  showToast('Removed from wishlist', 'success')
+}
+
+// ── Avatar upload ──
+function triggerAvatarUpload() { document.getElementById('avatar-input').click() }
+document.getElementById('avatar-input').addEventListener('change', async e => {
+  const file = e.target.files[0]; if (!file) return
+  if (file.size > 6*1024*1024) { showToast('Image too large (max 6MB)', 'error'); return }
+  const reader = new FileReader()
+  reader.onload = async ev => {
+    const data = ev.target.result
+    const res = await window.KonoAuth.fetch('/api/profile/avatar', { method:'POST', body: JSON.stringify({ data }) })
+    if (!res) return
+    const d = await res.json()
+    if (!res.ok) { showToast(d.error, 'error'); return }
+    document.getElementById('avatar-img').src = data
+    document.getElementById('avatar-img').style.display = 'block'
+    document.getElementById('avatar-placeholder').style.display = 'none'
+    showToast('Avatar updated! ✦', 'success')
+  }
+  reader.readAsDataURL(file)
+})
+
+// ── Cover upload ──
+function triggerCoverUpload() { document.getElementById('cover-input').click() }
+document.getElementById('cover-input').addEventListener('change', async e => {
+  const file = e.target.files[0]; if (!file) return
+  if (file.size > 9*1024*1024) { showToast('Image too large (max 9MB)', 'error'); return }
+  const reader = new FileReader()
+  reader.onload = async ev => {
+    const data = ev.target.result
+    const res = await window.KonoAuth.fetch('/api/profile/cover', { method:'POST', body: JSON.stringify({ data }) })
+    if (!res) return
+    const d = await res.json()
+    if (!res.ok) { showToast(d.error, 'error'); return }
+    document.getElementById('cover-img').src = data
+    document.getElementById('cover-img').style.display = 'block'
+    document.getElementById('cover-placeholder').style.display = 'none'
+    showToast('Cover updated! ✦', 'success')
+  }
+  reader.readAsDataURL(file)
+})
+
+// ── Frame picker ──
+let allFrames = []
+async function openFramePicker() {
+  document.getElementById('frame-modal').classList.add('open')
+  const grid = document.getElementById('frames-grid')
+  if (allFrames.length) { renderFrames(); return }
+  grid.innerHTML = '<div class="spinner"><div class="spinner-ring"></div></div>'
+  try {
+    const res = await fetch('/api/frames')
+    const data = await res.json()
+    allFrames = data.frames || []
+    renderFrames()
+  } catch { grid.innerHTML = '<div class="no-frames">Could not load frames</div>' }
+}
+function renderFrames() {
+  const grid = document.getElementById('frames-grid')
+  if (!allFrames.length) {
+    grid.innerHTML = `<div class="no-frames" style="grid-column:1/-1">No frames uploaded yet.<br><br>Staff can upload frames via WhatsApp:<br><code style="color:var(--cyan)">.uploadframe Frame Name</code></div>`
+    return
+  }
+  grid.innerHTML = allFrames.map(f=>`
+    <div class="frame-option ${f._id===selectedFrameId?'selected':''}" onclick="selectFrame('${f._id}','${f.color||'#9333ea'}')">
+      <img src="${f.image_url}" onerror="this.style.display='none'" alt="${f.name}">
+      <div class="frame-option-name">${f.name}</div>
+    </div>`).join('')
+}
+function selectFrame(id, color) {
+  selectedFrameId = id
+  document.querySelectorAll('.frame-option').forEach(el=>{
+    el.classList.toggle('selected', el.onclick.toString().includes(`'${id}'`))
+  })
+  // Preview on canvas
+  drawFrame(document.getElementById('frame-canvas'), color)
+}
+async function applyFrame() {
+  if (!selectedFrameId) { showToast('Select a frame first', 'error'); return }
+  const res = await window.KonoAuth.fetch('/api/profile/frame', { method:'POST', body: JSON.stringify({ frame_id: selectedFrameId }) })
+  if (!res) return
+  const d = await res.json()
+  if (!res.ok) { showToast(d.error, 'error'); return }
+  showToast(d.message || 'Frame applied! ✦', 'success')
+  closeFrameModal()
+}
+function closeFrameModal() { document.getElementById('frame-modal').classList.remove('open') }
+document.getElementById('frame-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('frame-modal')) closeFrameModal()
+})
+
+// ── Tabs ──
+document.querySelectorAll('.ptab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.ptab').forEach(b=>b.classList.remove('active'))
+    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'))
+    btn.classList.add('active')
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active')
+  })
+})
+
+loadProfile()
+</script>
+</body>
+</html>

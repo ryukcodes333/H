@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Reward — Shadow Garden</title>
+<link rel="stylesheet" href="/css/style.css">
+<script src="/js/auth.js"></script>
+</head>
+<body>
+<div class="page">
+  <div class="page-header">
+    <div class="page-header-title">🎁 Daily Reward</div>
+    <div class="page-header-sub">Claim your coins & gems every 24 hours</div>
+  </div>
+
+  <div class="section" style="padding-top:24px;max-width:480px">
+    <!-- Streak -->
+    <div class="card-panel mb-12" style="text-align:center;padding:24px">
+      <div style="font-size:48px;animation:pulse-fire 1.5s ease-in-out infinite" id="streak-icon">🔥</div>
+      <div style="font-size:32px;font-weight:800;margin-top:8px" id="streak-num">0</div>
+      <div style="font-size:14px;color:var(--muted)">Day Streak</div>
+    </div>
+
+    <!-- Claim button -->
+    <div style="text-align:center;padding:24px 0">
+      <button class="daily-claim-btn" id="claim-btn" onclick="claim()">🎁</button>
+      <div id="claim-status">
+        <div style="font-size:16px;font-weight:600;color:var(--muted)" id="claim-label">Loading…</div>
+        <div class="countdown" id="countdown" style="display:none">00:00:00</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:4px" id="next-reward"></div>
+      </div>
+    </div>
+
+    <!-- Tier table -->
+    <div class="card-panel">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:14px">📈 Streak Tiers</h3>
+      <table class="tier-table">
+        <tr><th>Streak</th><th>Coins</th><th>Gems</th><th>Tier</th></tr>
+        <tr class="" data-tier="0"><td>Day 1–6</td><td>20</td><td>1 💎</td><td>Starter</td></tr>
+        <tr class="" data-tier="1"><td>Day 7–13</td><td>23</td><td>1 💎</td><td>Regular</td></tr>
+        <tr class="" data-tier="2"><td>Day 14–20</td><td>26</td><td>1 💎</td><td>Veteran</td></tr>
+        <tr class="" data-tier="3"><td>Day 21–27</td><td>30</td><td>2 💎</td><td>Elite</td></tr>
+        <tr class="" data-tier="4"><td>Day 28+</td><td>35</td><td>2 💎</td><td>Legend</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes pulse-fire { 0%,100%{transform:scale(1)}50%{transform:scale(1.15) rotate(-3deg)} }
+</style>
+
+<script src="/js/nav.js"></script>
+<script>
+if (!window.KonoAuth.requireAuth()) {}
+
+let countdownInterval = null
+
+async function loadStatus() {
+  try {
+    const res = await window.KonoAuth.fetch('/api/daily/status')
+    if (!res) return
+    const data = await res.json()
+    const streak = data.streak || 0
+    document.getElementById('streak-num').textContent = streak
+    document.getElementById('streak-icon').textContent = streak >= 28 ? '🌟' : streak >= 14 ? '🔥' : streak >= 7 ? '🔥' : '⭐'
+
+    // Highlight active tier
+    const tierIdx = Math.min(Math.floor(streak/7), 4)
+    document.querySelectorAll('.tier-table tr[data-tier]').forEach(r => {
+      r.classList.toggle('active-tier', Number(r.dataset.tier) === tierIdx)
+    })
+
+    document.getElementById('next-reward').textContent =
+      `Next: +${data.nextCoins} coins & +${data.nextGems} gem${data.nextGems!==1?'s':''}`
+
+    if (data.available) {
+      document.getElementById('claim-btn').disabled = false
+      document.getElementById('claim-label').textContent = 'Tap to claim your daily reward!'
+      document.getElementById('countdown').style.display = 'none'
+      if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null }
+    } else {
+      document.getElementById('claim-btn').disabled = true
+      document.getElementById('claim-label').textContent = 'Come back in:'
+      document.getElementById('countdown').style.display = 'block'
+      startCountdown(data.remaining)
+    }
+  } catch {}
+}
+
+function startCountdown(ms) {
+  if (countdownInterval) clearInterval(countdownInterval)
+  let remaining = ms
+  const el = document.getElementById('countdown')
+  function tick() {
+    if (remaining <= 0) { clearInterval(countdownInterval); loadStatus(); return }
+    const h = Math.floor(remaining/3600000)
+    const m = Math.floor((remaining%3600000)/60000)
+    const s = Math.floor((remaining%60000)/1000)
+    el.textContent = String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')
+    remaining -= 1000
+  }
+  tick()
+  countdownInterval = setInterval(tick, 1000)
+}
+
+async function claim() {
+  document.getElementById('claim-btn').disabled = true
+  try {
+    const res = await window.KonoAuth.fetch('/api/daily', { method:'POST' })
+    if (!res) return
+    const data = await res.json()
+    if (!res.ok) { showToast(data.error||'Error', 'error'); loadStatus(); return }
+    showToast('🎉 ' + data.message, 'success')
+    document.getElementById('streak-num').textContent = data.streak
+    loadStatus()
+  } catch { showToast('Error claiming', 'error') }
+}
+
+loadStatus()
+</script>
+</body>
+</html>

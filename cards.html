@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cards — Shadow Garden</title>
+<link rel="stylesheet" href="/css/style.css">
+<script src="/js/auth.js"></script>
+</head>
+<body>
+<div class="page">
+  <div class="page-header">
+    <div class="page-header-title">🃏 Card Gallery</div>
+    <div class="page-header-sub" id="card-count-sub">Loading cards…</div>
+  </div>
+
+  <div class="section" style="padding-top:16px">
+    <!-- Source switcher -->
+    <div class="source-tabs">
+      <button class="source-tab active" data-src="mazoku" onclick="switchSource('mazoku')">Mazoku</button>
+      <button class="source-tab" data-src="shoob" onclick="switchSource('shoob')">Shoob</button>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-row">
+      <input type="search" class="filter-search" id="search-input" placeholder="Search by name or series…">
+      <select class="filter-select" id="tier-filter">
+        <option value="">All Tiers</option>
+        <option value="R">R — Common</option>
+        <option value="SR">SR — Uncommon</option>
+        <option value="SSR">SSR — Rare</option>
+        <option value="UR">UR — Ultra Rare</option>
+        <option value="T1">T1</option>
+        <option value="T2">T2</option>
+        <option value="T3">T3</option>
+        <option value="T4">T4</option>
+        <option value="T5">T5</option>
+        <option value="T6">T6</option>
+      </select>
+    </div>
+
+    <!-- Grid -->
+    <div class="cards-grid" id="cards-grid">
+      <div class="spinner" style="grid-column:1/-1"><div class="spinner-ring"></div></div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination">
+      <button class="page-btn" id="prev-btn" disabled onclick="changePage(-1)">← Prev</button>
+      <span class="page-info" id="page-info">Page 1</span>
+      <button class="page-btn" id="next-btn" onclick="changePage(1)">Next →</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/nav.js"></script>
+<script>
+let currentPage = 1
+let currentSource = 'mazoku'
+let wishlistIds = new Set()
+let debounceTimer
+
+async function loadWishlist() {
+  if (!window.KonoAuth.isLoggedIn()) return
+  try {
+    const res = await window.KonoAuth.fetch('/api/wishlist')
+    if (!res) return
+    const data = await res.json()
+    wishlistIds = new Set((data.wishlist||[]).map(c=>c.card_name+'||'+c.card_series))
+  } catch {}
+}
+
+async function loadCards() {
+  const grid = document.getElementById('cards-grid')
+  grid.innerHTML = '<div class="spinner" style="grid-column:1/-1"><div class="spinner-ring"></div></div>'
+  const search = document.getElementById('search-input').value.trim()
+  const tier   = document.getElementById('tier-filter').value
+  const params = new URLSearchParams({ source: currentSource, page: currentPage, limit: 48 })
+  if (search) params.set('search', search)
+  if (tier)   params.set('tier', tier)
+
+  try {
+    const res  = await fetch('/api/cards?' + params)
+    const data = await res.json()
+    const cards = data.cards || []
+
+    document.getElementById('card-count-sub').textContent =
+      data.total.toLocaleString() + ' cards · Page ' + data.page + ' of ' + data.pages
+
+    if (!cards.length) {
+      grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🃏</div><h3>No cards found</h3><p>Try a different search</p></div>'
+      return
+    }
+
+    grid.innerHTML = cards.map(c => {
+      const key = c.name+'||'+c.series
+      const wl = wishlistIds.has(key)
+      const tierClass = 'tier-' + (c.tier||'R').replace(/[^A-Za-z0-9]/g,'')
+      return `
+        <div class="card-thumb" onclick="viewCard('${encodeURIComponent(JSON.stringify(c))}')">
+          <img src="${c.imageUrl||''}" loading="lazy" onerror="this.src=''" alt="${c.name}">
+          <span class="tier-badge ${tierClass}">${c.tier||'?'}</span>
+          <div class="card-thumb-info">
+            <div class="card-thumb-name">${c.name}</div>
+            <div class="card-thumb-tier">${c.series||''}</div>
+          </div>
+          <button class="wishlist-btn ${wl?'wishlisted':''}" title="${wl?'Remove from wishlist':'Add to wishlist'}"
+            onclick="event.stopPropagation();toggleWishlist(this,'${c.name.replace(/'/g,"\\'")}','${c.tier||''}','${(c.series||'').replace(/'/g,"\\'")}','${c.imageUrl||''}')">
+            ${wl?'💜':'🤍'}
+          </button>
+        </div>`
+    }).join('')
+
+    document.getElementById('prev-btn').disabled = currentPage <= 1
+    document.getElementById('next-btn').disabled = currentPage >= data.pages
+    document.getElementById('page-info').textContent = 'Page ' + currentPage + ' / ' + data.pages
+  } catch (err) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><h3>Failed to load</h3><p>'+err.message+'</p></div>'
+  }
+}
+
+function switchSource(src) {
+  currentSource = src; currentPage = 1
+  document.querySelectorAll('.source-tab').forEach(t => t.classList.toggle('active', t.dataset.src===src))
+  document.getElementById('tier-filter').innerHTML = src === 'shoob'
+    ? `<option value="">All Tiers</option>${['T1','T2','T3','T4','T5','T6'].map(t=>`<option value="${t}">${t}</option>`).join('')}`
+    : `<option value="">All Tiers</option>${['R','SR','SSR','UR'].map(t=>`<option value="${t}">${t}</option>`).join('')}`
+  loadCards()
+}
+
+async function toggleWishlist(btn, name, tier, series, image) {
+  if (!window.KonoAuth.isLoggedIn()) { showToast('Login to use wishlist', 'error'); return }
+  const key = name+'||'+series
+  if (wishlistIds.has(key)) {
+    showToast('Already in wishlist 💜', '')
+    return
+  }
+  try {
+    const res = await window.KonoAuth.fetch('/api/wishlist', {
+      method: 'POST',
+      body: JSON.stringify({ card_name: name, card_tier: tier, card_series: series, card_image: image })
+    })
+    if (!res) return
+    const data = await res.json()
+    if (!res.ok) { showToast(data.error||'Error', 'error'); return }
+    wishlistIds.add(key)
+    btn.textContent = '💜'
+    btn.classList.add('wishlisted')
+    btn.title = 'Wishlisted!'
+    showToast('Added to wishlist 💜', 'success')
+  } catch { showToast('Error', 'error') }
+}
+
+function viewCard(encoded) {
+  try {
+    const c = JSON.parse(decodeURIComponent(encoded))
+    showToast(c.name + ' — ' + c.series, '')
+  } catch {}
+}
+
+function changePage(dir) {
+  currentPage += dir; loadCards()
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+let debounce
+document.getElementById('search-input').addEventListener('input', () => {
+  clearTimeout(debounce); debounce = setTimeout(() => { currentPage=1; loadCards() }, 400)
+})
+document.getElementById('tier-filter').addEventListener('change', () => { currentPage=1; loadCards() })
+
+loadWishlist().then(loadCards)
+</script>
+</body>
+</html>

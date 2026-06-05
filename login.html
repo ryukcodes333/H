@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — Shadow Garden</title>
+<link rel="stylesheet" href="/css/style.css">
+<script src="/js/auth.js"></script>
+</head>
+<body>
+<div class="page" style="min-height:100vh;display:flex;align-items:center;padding:24px 0">
+  <div class="form-wrap" style="width:100%">
+    <div class="form-card fade-up">
+      <div class="form-logo">
+        <img src="/img/icon.jpg" onerror="this.style.display='none'" alt="Logo">
+      </div>
+      <h2 class="form-title">Welcome Back ✦</h2>
+      <p class="form-subtitle">Login with your WhatsApp number & bot password</p>
+
+      <div class="info-box">
+        📱 <strong>How to get your credentials:</strong><br>
+        1. Type <code>.myid</code> in the bot → that's your phone number (ID)<br>
+        2. Your password is from <code>.reg (name) | (password)</code><br>
+        3. Use that same phone + password here
+      </div>
+
+      <form id="login-form">
+        <div class="form-group">
+          <label class="form-label">WhatsApp Number (with country code)</label>
+          <input type="tel" id="phone" class="form-input" placeholder="e.g. 2348012345678" autocomplete="tel">
+          <div class="form-hint">Type .myid in the bot to see your number</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="password" class="form-input" placeholder="Your .reg password" autocomplete="current-password">
+          <div class="form-hint">Use the password you set with .reg (name) | (password)</div>
+        </div>
+        <button type="submit" class="btn btn-primary w-full" id="login-btn">Login →</button>
+      </form>
+
+      <div class="form-footer">
+        No account yet? <a href="/signup" class="form-link">Sign up</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/nav.js"></script>
+<script>
+if (window.KonoAuth.isLoggedIn()) window.location.href = '/profile'
+
+document.getElementById('login-form').addEventListener('submit', async e => {
+  e.preventDefault()
+  const btn = document.getElementById('login-btn')
+  btn.disabled = true; btn.textContent = 'Logging in…'
+  const phone    = document.getElementById('phone').value.trim()
+  const password = document.getElementById('password').value
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, password })
+    })
+    const data = await res.json()
+    if (!res.ok) { showToast(data.error || 'Login failed', 'error'); btn.disabled=false; btn.textContent='Login →'; return }
+    window.KonoAuth.save(data.token, data.user)
+    showToast('Welcome back, ' + (data.user.name || 'Adventurer') + '! ✦', 'success')
+    setTimeout(() => { window.location.href = '/profile' }, 800)
+  } catch { showToast('Connection error', 'error'); btn.disabled=false; btn.textContent='Login →' }
+})
+</script>
+</body>
+</html>

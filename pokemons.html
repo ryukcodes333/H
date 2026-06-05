@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pokédex — Shadow Garden</title>
+<link rel="stylesheet" href="/css/style.css">
+<script src="/js/auth.js"></script>
+</head>
+<body>
+<div class="page">
+  <div class="page-header">
+    <div class="page-header-title">⚡ Pokédex</div>
+    <div class="page-header-sub">All 1,025 Pokémon — search &amp; explore</div>
+  </div>
+
+  <div class="section" style="padding-top:16px">
+    <div class="filter-row">
+      <input type="search" class="filter-search" id="poke-search" placeholder="Search Pokémon name…">
+    </div>
+
+    <div class="poke-grid" id="poke-grid">
+      <div class="spinner" style="grid-column:1/-1"><div class="spinner-ring"></div></div>
+    </div>
+
+    <div class="pagination">
+      <button class="page-btn" id="prev-btn" disabled onclick="changePage(-1)">← Prev</button>
+      <span class="page-info" id="page-info">Page 1</span>
+      <button class="page-btn" id="next-btn" onclick="changePage(1)">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail modal -->
+<div class="modal-overlay" id="poke-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="text-align:center;margin-bottom:16px">
+      <img id="modal-sprite" style="width:120px;height:120px;object-fit:contain" src="" alt="">
+      <h2 id="modal-name" style="font-size:22px;font-weight:700;text-transform:capitalize;margin-bottom:4px"></h2>
+      <div id="modal-types" style="margin-bottom:8px"></div>
+      <div id="modal-id" style="font-size:13px;color:var(--muted)"></div>
+    </div>
+    <div id="modal-stats" style="display:grid;gap:8px"></div>
+    <button class="btn btn-ghost w-full mt-16" onclick="closePoke()">Close</button>
+  </div>
+</div>
+
+<script src="/js/nav.js"></script>
+<script>
+let allPoke = []
+let filtered = []
+let curPage  = 1
+const PER_PAGE = 60
+
+async function loadPokedex() {
+  try {
+    const res  = await fetch('https://pokeapi.co/api/v2/pokemon?limit=1025&offset=0')
+    const data = await res.json()
+    allPoke = data.results.map((p, i) => ({
+      id: i + 1, name: p.name,
+      img: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i+1}.png`
+    }))
+    applyFilters()
+  } catch {
+    document.getElementById('poke-grid').innerHTML =
+      '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><h3>Could not reach PokéAPI</h3><p>Check your connection</p></div>'
+  }
+}
+
+function applyFilters() {
+  const q = document.getElementById('poke-search').value.toLowerCase().trim()
+  filtered = allPoke.filter(p => !q || p.name.includes(q))
+  curPage = 1; renderPoke()
+}
+
+function renderPoke() {
+  const grid  = document.getElementById('poke-grid')
+  const pages = Math.max(1, Math.ceil(filtered.length / PER_PAGE))
+  const slice = filtered.slice((curPage - 1) * PER_PAGE, curPage * PER_PAGE)
+  document.getElementById('prev-btn').disabled = curPage <= 1
+  document.getElementById('next-btn').disabled = curPage >= pages
+  document.getElementById('page-info').textContent = 'Page ' + curPage + ' / ' + pages
+  if (!slice.length) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🔍</div><h3>No Pokémon found</h3></div>'
+    return
+  }
+  grid.innerHTML = slice.map(p => `
+    <div class="poke-card" onclick="viewPoke(${p.id},'${p.name}')">
+      <img class="poke-img" src="${p.img}" loading="lazy" onerror="this.src=''" alt="${p.name}">
+      <div class="poke-name">${p.name}</div>
+      <div class="poke-id">#${String(p.id).padStart(4,'0')}</div>
+    </div>`).join('')
+}
+
+function changePage(dir) { curPage += dir; renderPoke(); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+
+let debounce
+document.getElementById('poke-search').addEventListener('input', () => {
+  clearTimeout(debounce); debounce = setTimeout(applyFilters, 300)
+})
+
+async function viewPoke(id, name) {
+  document.getElementById('poke-modal').classList.add('open')
+  document.getElementById('modal-name').textContent = name
+  document.getElementById('modal-sprite').src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`
+  document.getElementById('modal-id').textContent = '#' + String(id).padStart(4, '0')
+  document.getElementById('modal-types').innerHTML = ''
+  document.getElementById('modal-stats').innerHTML = '<div class="spinner"><div class="spinner-ring"></div></div>'
+  try {
+    const res = await fetch('https://pokeapi.co/api/v2/pokemon/' + id)
+    const p   = await res.json()
+    document.getElementById('modal-types').innerHTML = p.types.map(t =>
+      `<span class="poke-type type-${t.type.name}">${t.type.name}</span>`).join(' ')
+    document.getElementById('modal-stats').innerHTML = p.stats.map(s => `
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:11px;color:var(--muted);width:90px;flex-shrink:0;text-transform:capitalize">${s.stat.name}</span>
+        <div style="flex:1;height:5px;background:rgba(255,255,255,.1);border-radius:99px;overflow:hidden">
+          <div style="width:${Math.min(100,s.base_stat/2)}%;height:100%;background:linear-gradient(90deg,var(--purple),var(--pink));border-radius:99px"></div>
+        </div>
+        <span style="font-size:12px;font-weight:700;width:28px;text-align:right">${s.base_stat}</span>
+      </div>`).join('')
+  } catch { document.getElementById('modal-stats').innerHTML = '<p style="color:var(--muted);font-size:13px">Could not load stats</p>' }
+}
+
+function closePoke() { document.getElementById('poke-modal').classList.remove('open') }
+document.getElementById('poke-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('poke-modal')) closePoke()
+})
+
+loadPokedex()
+</script>
+</body>
+</html>
