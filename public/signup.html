@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Konosuba Bot — Sign Up</title>
+<link rel="icon" type="image/jpeg" href="/img/icon.jpg">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  .auth-wrap {
+    max-width: 440px; margin: 0 auto; padding: 32px 16px;
+  }
+  .auth-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 32px 28px;
+    position: relative; overflow: hidden;
+  }
+  .auth-card::before {
+    content: '';
+    position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--purple), transparent);
+  }
+  .auth-logo {
+    text-align: center; margin-bottom: 24px;
+  }
+  .auth-logo img {
+    width: 64px; height: 64px; border-radius: 14px; object-fit: cover;
+    border: 2px solid var(--border2); box-shadow: 0 0 20px rgba(124,58,237,0.3);
+  }
+  .auth-logo h2 { font-size: 1.5rem; font-weight: 800; margin-top: 10px; }
+  .auth-logo p  { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+
+  .divider { text-align: center; color: var(--muted2); font-size: 0.8rem; margin: 6px 0 18px; }
+
+  .wa-info {
+    background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.2);
+    border-radius: var(--radius-sm); padding: 12px 14px;
+    display: flex; gap: 10px; align-items: flex-start;
+    margin-bottom: 20px; font-size: 0.82rem; color: var(--green-lt); line-height: 1.5;
+  }
+  .wa-info i { margin-top: 2px; flex-shrink: 0; color: #34d399; }
+</style>
+</head>
+<body>
+<script src="/js/auth.js"></script>
+<script src="/js/nav.js"></script>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <img src="/img/icon.jpg" alt="Konosuba Bot" onerror="this.style.display='none'">
+      <h2 class="gradient-text">Create Account</h2>
+      <p>Join the Konosuba community</p>
+    </div>
+
+    <div class="wa-info">
+      <i class="fab fa-whatsapp"></i>
+      <span>Use the same phone number you use on WhatsApp. Your web account will be automatically linked — the bot will recognize you by your number.</span>
+    </div>
+
+    <div id="alertBox" class="alert alert-error" style="display:none"></div>
+
+    <div class="form-group">
+      <label class="form-label">Display Name</label>
+      <div class="input-wrap">
+        <i class="input-icon fas fa-user"></i>
+        <input id="name" type="text" class="input" placeholder="e.g. Kazuma" maxlength="32">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">WhatsApp Phone Number</label>
+      <div class="input-wrap">
+        <i class="input-icon fas fa-phone"></i>
+        <input id="phone" type="tel" class="input" placeholder="e.g. 2347052309386" inputmode="numeric">
+      </div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:5px;padding-left:4px;">Include country code, no spaces or dashes. E.g. 2348012345678</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <div class="input-wrap">
+        <i class="input-icon fas fa-lock"></i>
+        <input id="password" type="password" class="input" placeholder="Min 4 characters">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Confirm Password</label>
+      <div class="input-wrap">
+        <i class="input-icon fas fa-lock"></i>
+        <input id="confirm" type="password" class="input" placeholder="Repeat password">
+      </div>
+    </div>
+
+    <button id="signupBtn" class="btn btn-primary btn-full btn-lg" onclick="doSignup()">
+      <i class="fas fa-user-plus"></i> Create Account
+    </button>
+
+    <div class="divider" style="margin-top:18px;">Already have an account? <a href="/login" style="color:var(--purple-lt);font-weight:600;">Log in</a></div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  KonoAuth.redirectIfLoggedIn()
+  document.getElementById('confirm').addEventListener('keydown', e => { if (e.key === 'Enter') doSignup() })
+})
+
+async function doSignup() {
+  const name     = document.getElementById('name').value.trim()
+  const phone    = document.getElementById('phone').value.trim()
+  const password = document.getElementById('password').value
+  const confirm  = document.getElementById('confirm').value
+  const btn      = document.getElementById('signupBtn')
+  const alert    = document.getElementById('alertBox')
+
+  alert.style.display = 'none'
+
+  if (!phone)           return showAlert('Enter your WhatsApp phone number.')
+  if (!password)        return showAlert('Enter a password.')
+  if (password.length < 4) return showAlert('Password must be at least 4 characters.')
+  if (password !== confirm) return showAlert('Passwords do not match.')
+
+  btn.disabled = true
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating account...'
+
+  try {
+    const data = await KonoAuth.apiFetch('/api/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify({ phone, name, password })
+    })
+    KonoAuth.save(data.token, data.user)
+    showToast('Welcome! Account created 🎉', 'success')
+    setTimeout(() => window.location.href = '/profile', 900)
+  } catch (err) {
+    showAlert(err.message)
+    btn.disabled = false
+    btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account'
+  }
+}
+
+function showAlert(msg) {
+  const a = document.getElementById('alertBox')
+  a.innerHTML = `<i class="fas fa-circle-exclamation"></i> ${msg}`
+  a.style.display = 'flex'
+}
+</script>
+</body>
+</html>

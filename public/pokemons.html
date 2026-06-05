@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Konosuba Bot — Pokédex</title>
+<link rel="icon" type="image/jpeg" href="/img/icon.jpg">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  .poke-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .poke-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 12px;
+    text-align: center; cursor: pointer; transition: all 0.25s;
+  }
+  .poke-card:hover { border-color: var(--border2); transform: translateY(-3px); box-shadow: 0 10px 32px rgba(0,0,0,0.4); }
+  .poke-card img { width: 80px; height: 80px; object-fit: contain; image-rendering: pixelated; }
+  .poke-card .poke-id  { font-size: 0.68rem; color: var(--muted2); font-weight: 600; }
+  .poke-card .poke-name { font-size: 0.88rem; font-weight: 700; text-transform: capitalize; margin: 3px 0 6px; }
+  .poke-card .poke-types { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
+
+  .type-chip {
+    padding: 2px 8px; border-radius: 99px;
+    font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+
+  /* Modal */
+  #pokeModal {
+    display: none; position: fixed; inset: 0; z-index: 300;
+    background: rgba(0,0,0,0.85); backdrop-filter: blur(10px);
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .poke-modal-inner {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: var(--radius-lg); max-width: 460px; width: 100%;
+    overflow: hidden; animation: modalIn 0.3s cubic-bezier(0.16,1,0.3,1);
+    max-height: 90vh; overflow-y: auto;
+  }
+  .poke-modal-hero {
+    padding: 28px 24px 20px; text-align: center;
+    background: linear-gradient(135deg, var(--surface2), var(--surface3));
+  }
+  .poke-modal-hero img { width: 120px; height: 120px; object-fit: contain; image-rendering: pixelated; }
+  .poke-modal-body { padding: 20px 24px; }
+  .stat-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .stat-row .sname { width: 90px; font-size: 0.78rem; color: var(--muted); font-weight: 500; flex-shrink: 0; text-transform: capitalize; }
+  .stat-bar-bg { flex: 1; height: 7px; background: var(--surface3); border-radius: 99px; overflow: hidden; }
+  .stat-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--purple), var(--crimson)); transition: width 0.8s; }
+  .stat-val { width: 36px; text-align: right; font-size: 0.78rem; font-weight: 700; }
+
+  @keyframes modalIn { from { opacity:0; transform:scale(0.9) translateY(20px); } to { opacity:1; transform:scale(1) translateY(0); } }
+</style>
+</head>
+<body>
+<script src="/js/auth.js"></script>
+<script src="/js/nav.js"></script>
+
+<div class="page">
+  <div class="page-header">
+    <div class="icon" style="background:linear-gradient(135deg,#2563eb,#1d4ed8)">
+      <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" style="width:28px;height:28px;image-rendering:pixelated" alt="Pokeball">
+    </div>
+    <div>
+      <h1>Pokédex</h1>
+      <p>All 1,025 Pokémon — live data from PokéAPI</p>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <div class="input-wrap" style="flex:2;min-width:200px">
+      <i class="input-icon fas fa-search"></i>
+      <input type="text" id="pokeSearch" class="input" placeholder="Search Pokémon name…" oninput="debouncedPokeSearch()">
+    </div>
+    <div class="input-wrap" style="flex:1;min-width:120px">
+      <select class="input" id="typeFilter" onchange="filterByType()">
+        <option value="">All Types</option>
+        <option value="normal">Normal</option><option value="fire">Fire</option>
+        <option value="water">Water</option><option value="electric">Electric</option>
+        <option value="grass">Grass</option><option value="ice">Ice</option>
+        <option value="fighting">Fighting</option><option value="poison">Poison</option>
+        <option value="ground">Ground</option><option value="flying">Flying</option>
+        <option value="psychic">Psychic</option><option value="bug">Bug</option>
+        <option value="rock">Rock</option><option value="ghost">Ghost</option>
+        <option value="dragon">Dragon</option><option value="dark">Dark</option>
+        <option value="steel">Steel</option><option value="fairy">Fairy</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="count-bar" id="countBar" style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:0.83rem;margin-bottom:16px"></div>
+
+  <div class="poke-grid" id="pokeGrid">
+    <div class="loading-center" style="grid-column:1/-1"><div class="spinner"></div><p>Loading Pokémon…</p></div>
+  </div>
+
+  <div class="pagination" id="pokePagination"></div>
+</div>
+
+<!-- Pokémon Modal -->
+<div id="pokeModal" onclick="closePokeModal(event)">
+  <div class="poke-modal-inner">
+    <div class="poke-modal-hero">
+      <img id="mImg" src="" alt="">
+      <div style="font-size:0.78rem;color:var(--muted2);margin-bottom:4px" id="mId"></div>
+      <h2 style="text-transform:capitalize;font-size:1.4rem;margin-bottom:8px" id="mName"></h2>
+      <div id="mTypes" class="poke-card" style="display:flex;gap:6px;justify-content:center;background:none;border:none;padding:0"></div>
+    </div>
+    <div class="poke-modal-body">
+      <div style="display:flex;gap:16px;margin-bottom:18px;flex-wrap:wrap">
+        <div><div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em">Height</div><div style="font-weight:700" id="mHeight"></div></div>
+        <div><div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em">Weight</div><div style="font-weight:700" id="mWeight"></div></div>
+        <div><div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em">Base XP</div><div style="font-weight:700" id="mXp"></div></div>
+      </div>
+      <div style="font-size:0.8rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px">Base Stats</div>
+      <div id="mStats"></div>
+      <div style="font-size:0.8rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin:14px 0 8px">Abilities</div>
+      <div id="mAbilities" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      <button class="btn btn-ghost btn-full" style="margin-top:18px" onclick="closePokeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TYPE_COLORS = {
+  normal:'#94a3b8',fire:'#ef4444',water:'#3b82f6',electric:'#eab308',grass:'#22c55e',
+  ice:'#67e8f9',fighting:'#dc2626',poison:'#a855f7',ground:'#d97706',flying:'#818cf8',
+  psychic:'#f472b6',bug:'#65a30d',rock:'#92400e',ghost:'#6d28d9',dragon:'#1e3a8a',
+  dark:'#1e293b',steel:'#64748b',fairy:'#f9a8d4'
+}
+
+let allPoke = [], filteredPoke = [], currentPokePage = 1
+const POKE_PER_PAGE = 100
+let searchTimeout
+
+async function loadPokemonList() {
+  try {
+    const data = await fetch('https://pokeapi.co/api/v2/pokemon?limit=1025&offset=0').then(r => r.json())
+    allPoke = data.results.map((p, i) => ({ name: p.name, id: i + 1, url: p.url }))
+    filteredPoke = [...allPoke]
+    renderPokeGrid(filteredPoke, 1)
+    document.getElementById('countBar').innerHTML = `<strong>${allPoke.length.toLocaleString()}</strong> Pokémon loaded`
+  } catch {
+    document.getElementById('pokeGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1"><i class="fas fa-circle-exclamation"></i><h3>Failed to load</h3><p>PokéAPI may be unavailable.</p></div>'
+  }
+}
+
+function renderPokeGrid(list, page) {
+  currentPokePage = page
+  const start = (page - 1) * POKE_PER_PAGE
+  const paged = list.slice(start, start + POKE_PER_PAGE)
+
+  if (!paged.length) {
+    document.getElementById('pokeGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1"><i class="fas fa-dragon"></i><h3>No Pokémon found</h3></div>'
+    document.getElementById('pokePagination').innerHTML = ''
+    return
+  }
+
+  document.getElementById('pokeGrid').innerHTML = paged.map(p => {
+    const sprite = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png`
+    const numStr = String(p.id).padStart(4, '0')
+    return `
+      <div class="poke-card" onclick="openPoke(${p.id},'${p.name}')">
+        <img src="${sprite}" alt="${p.name}" loading="lazy" onerror="this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/0.png'">
+        <div class="poke-id">#${numStr}</div>
+        <div class="poke-name">${p.name}</div>
+      </div>`
+  }).join('')
+
+  const pages = Math.ceil(list.length / POKE_PER_PAGE)
+  renderPokePagination(page, pages, list)
+}
+
+function renderPokePagination(page, pages, list) {
+  if (pages <= 1) { document.getElementById('pokePagination').innerHTML = ''; return }
+  const btns = []
+  if (page > 1) btns.push(`<button class="page-btn" onclick="renderPokeGrid(filteredPoke,${page-1})"><i class="fas fa-chevron-left"></i></button>`)
+  const st = Math.max(1, page-2), en = Math.min(pages, page+2)
+  if (st > 1) { btns.push(`<button class="page-btn" onclick="renderPokeGrid(filteredPoke,1)">1</button>`); if (st > 2) btns.push('<span style="color:var(--muted);padding:0 6px">…</span>') }
+  for (let i = st; i <= en; i++) btns.push(`<button class="page-btn ${i===page?'active':''}" onclick="renderPokeGrid(filteredPoke,${i})">${i}</button>`)
+  if (en < pages) { if (en < pages-1) btns.push('<span style="color:var(--muted);padding:0 6px">…</span>'); btns.push(`<button class="page-btn" onclick="renderPokeGrid(filteredPoke,${pages})">${pages}</button>`) }
+  if (page < pages) btns.push(`<button class="page-btn" onclick="renderPokeGrid(filteredPoke,${page+1})"><i class="fas fa-chevron-right"></i></button>`)
+  document.getElementById('pokePagination').innerHTML = btns.join('')
+}
+
+function debouncedPokeSearch() { clearTimeout(searchTimeout); searchTimeout = setTimeout(filterPoke, 300) }
+
+function filterPoke() {
+  const q = document.getElementById('pokeSearch').value.trim().toLowerCase()
+  const t = document.getElementById('typeFilter').value
+  if (!q && !t) { filteredPoke = [...allPoke] }
+  else { filteredPoke = allPoke.filter(p => (!q || p.name.includes(q)) ) }
+  renderPokeGrid(filteredPoke, 1)
+  document.getElementById('countBar').innerHTML = `<strong>${filteredPoke.length.toLocaleString()}</strong> Pokémon shown`
+}
+
+function filterByType() { filterPoke() }
+
+async function openPoke(id, name) {
+  document.getElementById('pokeModal').style.display = 'flex'
+  document.getElementById('mName').textContent = name
+  document.getElementById('mId').textContent = `#${String(id).padStart(4,'0')}`
+  document.getElementById('mImg').src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`
+  document.getElementById('mStats').innerHTML = '<div class="spinner" style="width:24px;height:24px;border-width:2px;margin:8px 0"></div>'
+  document.getElementById('mTypes').innerHTML = ''
+  document.getElementById('mAbilities').innerHTML = ''
+  document.getElementById('mHeight').textContent = '…'
+  document.getElementById('mWeight').textContent = '…'
+  document.getElementById('mXp').textContent = '…'
+
+  try {
+    const poke = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`).then(r => r.json())
+    const types = poke.types.map(t => t.type.name)
+    document.getElementById('mTypes').innerHTML = types.map(t =>
+      `<span class="type-chip" style="background:${TYPE_COLORS[t]||'#64748b'}22;color:${TYPE_COLORS[t]||'#94a3b8'};border:1px solid ${TYPE_COLORS[t]||'#64748b'}44">${t}</span>`
+    ).join('')
+    document.getElementById('mHeight').textContent = `${poke.height / 10}m`
+    document.getElementById('mWeight').textContent = `${poke.weight / 10}kg`
+    document.getElementById('mXp').textContent = poke.base_experience || '—'
+
+    const statNames = { hp:'HP','attack':'ATK','defense':'DEF','special-attack':'SpATK','special-defense':'SpDEF','speed':'SPD' }
+    document.getElementById('mStats').innerHTML = poke.stats.map(s => {
+      const val = s.base_stat, pct = Math.min(100, Math.round(val / 255 * 100))
+      return `<div class="stat-row">
+        <div class="sname">${statNames[s.stat.name]||s.stat.name}</div>
+        <div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${pct}%"></div></div>
+        <div class="stat-val">${val}</div>
+      </div>`
+    }).join('')
+
+    document.getElementById('mAbilities').innerHTML = poke.abilities.map(a =>
+      `<span class="badge badge-purple" style="text-transform:capitalize">${a.ability.name.replace(/-/g,' ')}</span>`
+    ).join('')
+  } catch {
+    document.getElementById('mStats').innerHTML = '<p style="color:var(--muted);font-size:0.82rem">Failed to load details.</p>'
+  }
+}
+
+function closePokeModal(e) {
+  if (!e || e.target === document.getElementById('pokeModal')) document.getElementById('pokeModal').style.display = 'none'
+}
+
+document.addEventListener('DOMContentLoaded', loadPokemonList)
+</script>
+</body>
+</html>

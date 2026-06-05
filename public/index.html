@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Konosuba Bot — Home</title>
+<link rel="icon" type="image/jpeg" href="/img/icon.jpg">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  .hero {
+    text-align: center; padding: 48px 16px 36px;
+    position: relative; z-index: 1;
+  }
+  .hero-logo {
+    width: 88px; height: 88px; border-radius: 20px;
+    object-fit: cover; margin: 0 auto 20px;
+    border: 2px solid var(--border2);
+    box-shadow: 0 0 32px rgba(124,58,237,0.4);
+    display: block;
+  }
+  .hero-logo-fallback {
+    width: 88px; height: 88px; border-radius: 20px;
+    margin: 0 auto 20px;
+    background: linear-gradient(135deg, var(--purple), var(--crimson));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.5rem;
+    box-shadow: 0 0 32px rgba(124,58,237,0.4);
+  }
+  .hero h1 { font-size: clamp(1.8rem, 5vw, 2.8rem); font-weight: 900; margin-bottom: 10px; }
+  .hero p  { color: var(--muted); font-size: 1rem; max-width: 480px; margin: 0 auto 28px; line-height: 1.6; }
+  .hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 28px; }
+
+  .features { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .feature-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px;
+    transition: all 0.25s; cursor: pointer; text-decoration: none; display: block;
+  }
+  .feature-card:hover { border-color: var(--border2); transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
+  .feature-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; margin-bottom: 14px;
+  }
+  .feature-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 5px; }
+  .feature-card p  { font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+
+  .wa-banner {
+    background: linear-gradient(135deg, rgba(5,150,105,0.12), rgba(5,150,105,0.06));
+    border: 1px solid rgba(5,150,105,0.3);
+    border-radius: var(--radius); padding: 22px 24px;
+    display: flex; align-items: center; gap: 16px;
+    flex-wrap: wrap; margin-bottom: 20px;
+  }
+  .wa-banner i { font-size: 2rem; color: #34d399; flex-shrink: 0; }
+  .wa-banner h3 { font-size: 1rem; font-weight: 700; color: var(--green-lt); }
+  .wa-banner p  { font-size: 0.83rem; color: var(--muted); margin-top: 2px; }
+</style>
+</head>
+<body>
+<script src="/js/auth.js"></script>
+<script src="/js/nav.js"></script>
+
+<div class="page">
+  <div class="hero">
+    <img src="/img/icon.jpg" class="hero-logo" alt="Konosuba Bot" onerror="this.style.display='none'; document.getElementById('heroFallback').style.display='flex'">
+    <div class="hero-logo-fallback" id="heroFallback" style="display:none;">💥</div>
+    <h1 class="gradient-text">Konosuba Bot</h1>
+    <p>Your WhatsApp community hub — cards, Pokémon, economy, battles and more. All synced between the bot and this website.</p>
+    <div class="hero-btns">
+      <a href="/signup" class="btn btn-primary btn-lg"><i class="fas fa-user-plus"></i> Get Started</a>
+      <a href="/cards" class="btn btn-ghost btn-lg"><i class="fas fa-id-card"></i> Browse Cards</a>
+    </div>
+  </div>
+
+  <div class="stats-row" id="statsRow">
+    <div class="stat-box"><div class="stat-val gradient-text" id="statUsers">—</div><div class="stat-lbl">Players</div></div>
+    <div class="stat-box"><div class="stat-val gradient-text" id="statCards">—</div><div class="stat-lbl">Cards Owned</div></div>
+    <div class="stat-box"><div class="stat-val gradient-text" id="statPokemons">1,025</div><div class="stat-lbl">Pokémon</div></div>
+  </div>
+
+  <div class="wa-banner">
+    <i class="fab fa-whatsapp"></i>
+    <div>
+      <h3>Linked to WhatsApp</h3>
+      <p>Sign up with your WhatsApp number — your web profile automatically syncs with the bot. Everything you do here is reflected there.</p>
+    </div>
+  </div>
+
+  <div class="features">
+    <a href="/shop" class="feature-card">
+      <div class="feature-icon" style="background:rgba(124,58,237,0.15);color:var(--purple-lt)"><i class="fas fa-store"></i></div>
+      <h3>Item Shop</h3>
+      <p>Buy weapons, armor, potions, and tools with your earned coins.</p>
+    </a>
+    <a href="/leaderboard" class="feature-card">
+      <div class="feature-icon" style="background:rgba(217,119,6,0.15);color:var(--gold-lt)"><i class="fas fa-trophy"></i></div>
+      <h3>Leaderboard</h3>
+      <p>See who's at the top by XP, coins, level, and Pokémon wins.</p>
+    </a>
+    <a href="/cards" class="feature-card">
+      <div class="feature-icon" style="background:rgba(220,38,38,0.12);color:var(--crimson-lt)"><i class="fas fa-id-card"></i></div>
+      <h3>Card Gallery</h3>
+      <p>Browse thousands of anime cards. Filter by tier, series, or name.</p>
+    </a>
+    <a href="/pokemons" class="feature-card">
+      <div class="feature-icon" style="background:rgba(37,99,235,0.12);color:var(--blue-lt)"><i class="fas fa-dragon"></i></div>
+      <h3>Pokédex</h3>
+      <p>Live Pokémon data — all 1,025 with stats, types, moves and more.</p>
+    </a>
+    <a href="/profile" class="feature-card">
+      <div class="feature-icon" style="background:rgba(5,150,105,0.12);color:var(--green-lt)"><i class="fas fa-user-circle"></i></div>
+      <h3>Your Profile</h3>
+      <p>Track your wallet, level, cards, Pokémon, and inventory.</p>
+    </a>
+    <a href="/daily" class="feature-card">
+      <div class="feature-icon" style="background:rgba(124,58,237,0.15);color:var(--purple-xs)"><i class="fas fa-gift"></i></div>
+      <h3>Daily Reward</h3>
+      <p>Claim coins and gems every day. Build your streak for bigger rewards!</p>
+    </a>
+  </div>
+</div>
+
+<script>
+fetch('/api/stats').then(r=>r.json()).then(d=>{
+  document.getElementById('statUsers').textContent    = (d.totalUsers||0).toLocaleString()
+  document.getElementById('statCards').textContent    = (d.totalCards||0).toLocaleString()
+  document.getElementById('statPokemons').textContent = (d.totalPokemons||1025).toLocaleString()
+}).catch(()=>{})
+</script>
+</body>
+</html>

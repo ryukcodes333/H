@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Konosuba Bot — Login</title>
+<link rel="icon" type="image/jpeg" href="/img/icon.jpg">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  .auth-wrap { max-width: 440px; margin: 0 auto; padding: 32px 16px; }
+  .auth-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 32px 28px;
+    position: relative; overflow: hidden;
+  }
+  .auth-card::before {
+    content: ''; position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--crimson), transparent);
+  }
+  .auth-logo { text-align: center; margin-bottom: 28px; }
+  .auth-logo img { width: 64px; height: 64px; border-radius: 14px; object-fit: cover; border: 2px solid var(--border2); box-shadow: 0 0 20px rgba(124,58,237,0.3); }
+  .auth-logo h2 { font-size: 1.5rem; font-weight: 800; margin-top: 10px; }
+  .auth-logo p  { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+  .divider { text-align: center; color: var(--muted2); font-size: 0.8rem; margin: 18px 0 0; }
+</style>
+</head>
+<body>
+<script src="/js/auth.js"></script>
+<script src="/js/nav.js"></script>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <img src="/img/icon.jpg" alt="Konosuba Bot" onerror="this.style.display='none'">
+      <h2 class="gradient-text">Welcome Back</h2>
+      <p>Login to your Konosuba account</p>
+    </div>
+
+    <div id="alertBox" class="alert alert-error" style="display:none"></div>
+
+    <div class="form-group">
+      <label class="form-label">WhatsApp Phone Number</label>
+      <div class="input-wrap">
+        <i class="input-icon fas fa-phone"></i>
+        <input id="phone" type="tel" class="input" placeholder="e.g. 2347052309386" inputmode="numeric">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <div class="input-wrap">
+        <i class="input-icon fas fa-lock"></i>
+        <input id="password" type="password" class="input" placeholder="Your password">
+      </div>
+    </div>
+
+    <button id="loginBtn" class="btn btn-primary btn-full btn-lg" onclick="doLogin()">
+      <i class="fas fa-right-to-bracket"></i> Login
+    </button>
+
+    <div class="divider">Don't have an account? <a href="/signup" style="color:var(--purple-lt);font-weight:600;">Sign up</a></div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  KonoAuth.redirectIfLoggedIn()
+  document.getElementById('password').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin() })
+})
+
+async function doLogin() {
+  const phone    = document.getElementById('phone').value.trim()
+  const password = document.getElementById('password').value
+  const btn      = document.getElementById('loginBtn')
+
+  document.getElementById('alertBox').style.display = 'none'
+  if (!phone || !password) return showAlert('Fill in all fields.')
+
+  btn.disabled = true
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...'
+
+  try {
+    const data = await KonoAuth.apiFetch('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ phone, password })
+    })
+    KonoAuth.save(data.token, data.user)
+    showToast('Logged in! 👋', 'success')
+    setTimeout(() => window.location.href = '/profile', 800)
+  } catch (err) {
+    showAlert(err.message)
+    btn.disabled = false
+    btn.innerHTML = '<i class="fas fa-right-to-bracket"></i> Login'
+  }
+}
+
+function showAlert(msg) {
+  const a = document.getElementById('alertBox')
+  a.innerHTML = `<i class="fas fa-circle-exclamation"></i> ${msg}`
+  a.style.display = 'flex'
+}
+</script>
+</body>
+</html>

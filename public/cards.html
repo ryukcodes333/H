@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Konosuba Bot — Cards</title>
+<link rel="icon" type="image/jpeg" href="/img/icon.jpg">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+  }
+  .anime-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+    transition: all 0.25s; cursor: pointer;
+    position: relative;
+  }
+  .anime-card:hover { border-color: var(--border2); transform: translateY(-4px); box-shadow: 0 12px 36px rgba(0,0,0,0.5); }
+  .anime-card img {
+    width: 100%; aspect-ratio: 3/4; object-fit: cover; display: block;
+    background: var(--surface2);
+  }
+  .anime-card .card-info {
+    padding: 10px 10px 12px;
+  }
+  .anime-card .card-name { font-size: 0.82rem; font-weight: 700; line-height: 1.3; margin-bottom: 5px; }
+  .anime-card .card-series { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; }
+  .anime-card .card-tier-row { display: flex; align-items: center; justify-content: space-between; }
+
+  .img-placeholder {
+    width: 100%; aspect-ratio: 3/4;
+    background: linear-gradient(135deg, var(--surface2), var(--surface3));
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted2); font-size: 2rem;
+  }
+
+  .count-bar {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--muted); font-size: 0.83rem;
+    margin-bottom: 16px;
+  }
+  .count-bar strong { color: var(--text); }
+</style>
+</head>
+<body>
+<script src="/js/auth.js"></script>
+<script src="/js/nav.js"></script>
+
+<div class="page">
+  <div class="page-header">
+    <div class="icon" style="background:linear-gradient(135deg,var(--crimson),var(--crimson2))"><i class="fas fa-id-card"></i></div>
+    <div>
+      <h1>Card Gallery</h1>
+      <p>Browse the full card pool from the bot</p>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <div class="input-wrap" style="flex:2;min-width:180px">
+      <i class="input-icon fas fa-search"></i>
+      <input type="text" class="input" id="searchInput" placeholder="Search name or series…" oninput="debouncedSearch()">
+    </div>
+    <div class="input-wrap" style="flex:1;min-width:120px">
+      <select class="input" id="tierFilter" onchange="doSearch()">
+        <option value="">All Tiers</option>
+        <option value="C">C — Common</option>
+        <option value="R">R — Rare</option>
+        <option value="SR">SR — Super Rare</option>
+        <option value="SSR">SSR — Special</option>
+        <option value="UR">UR — Ultra Rare</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="count-bar" id="countBar"></div>
+
+  <div class="card-grid" id="cardGrid">
+    <div class="loading-center" style="grid-column:1/-1"><div class="spinner"></div><p>Loading cards…</p></div>
+  </div>
+
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<!-- Card modal -->
+<div id="cardModal" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px" onclick="closeModal(event)">
+  <div style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);max-width:360px;width:100%;overflow:hidden;animation:modalIn 0.3s cubic-bezier(0.16,1,0.3,1)">
+    <img id="modalImg" style="width:100%;max-height:300px;object-fit:cover" src="" alt="">
+    <div style="padding:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <h3 id="modalName" style="font-size:1.1rem"></h3>
+        <span id="modalTier" class="tier"></span>
+      </div>
+      <div id="modalSeries" style="color:var(--muted);font-size:0.83rem;margin-bottom:14px"></div>
+      <button class="btn btn-ghost btn-full" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes modalIn { from { opacity:0; transform:scale(0.9) translateY(20px); } to { opacity:1; transform:scale(1) translateY(0); } }
+</style>
+
+<script>
+let currentPage = 1
+let searchTimeout
+
+async function doSearch(page = 1) {
+  currentPage = page
+  const search = document.getElementById('searchInput').value.trim()
+  const tier   = document.getElementById('tierFilter').value
+  const params = new URLSearchParams({ page, limit: 48 })
+  if (search) params.set('search', search)
+  if (tier)   params.set('tier', tier)
+
+  document.getElementById('cardGrid').innerHTML = '<div class="loading-center" style="grid-column:1/-1"><div class="spinner"></div></div>'
+  document.getElementById('pagination').innerHTML = ''
+
+  try {
+    const data = await fetch(`/api/cards?${params}`).then(r => r.json())
+    renderCards(data.cards || [], data.total || 0)
+    renderPagination(data.page, data.pages)
+    document.getElementById('countBar').innerHTML = `Showing <strong>${data.cards?.length||0}</strong> of <strong>${(data.total||0).toLocaleString()}</strong> cards`
+  } catch {
+    document.getElementById('cardGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1"><i class="fas fa-circle-exclamation"></i><h3>Failed to load</h3></div>'
+  }
+}
+
+function debouncedSearch() {
+  clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => doSearch(1), 400)
+}
+
+function renderCards(cards, total) {
+  if (!cards.length) {
+    document.getElementById('cardGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1"><i class="fas fa-id-card"></i><h3>No cards found</h3><p>Try different filters.</p></div>'
+    return
+  }
+  document.getElementById('cardGrid').innerHTML = cards.map(card => `
+    <div class="anime-card" onclick="openCard(${JSON.stringify(card).replace(/"/g,'&quot;')})">
+      ${card.imageUrl
+        ? `<img src="${card.imageUrl}" alt="${escHtml(card.name)}" loading="lazy" onerror="this.outerHTML='<div class=img-placeholder><i class=fas fa-image></i></div>'">`
+        : `<div class="img-placeholder"><i class="fas fa-image"></i></div>`
+      }
+      <div class="card-info">
+        <div class="card-name">${escHtml(card.name)}</div>
+        <div class="card-series">${escHtml(card.series||'Unknown')}</div>
+        <div class="card-tier-row">
+          <span class="tier tier-${card.tier}">${card.tier}</span>
+        </div>
+      </div>
+    </div>`).join('')
+}
+
+function renderPagination(page, pages) {
+  if (pages <= 1) return
+  const pag = document.getElementById('pagination')
+  const btns = []
+  if (page > 1) btns.push(`<button class="page-btn" onclick="doSearch(${page-1})"><i class="fas fa-chevron-left"></i></button>`)
+  const start = Math.max(1, page - 2), end = Math.min(pages, page + 2)
+  if (start > 1) btns.push(`<button class="page-btn" onclick="doSearch(1)">1</button>${start > 2 ? '<span style="color:var(--muted);padding:0 6px">…</span>' : ''}`)
+  for (let p = start; p <= end; p++) btns.push(`<button class="page-btn ${p===page?'active':''}" onclick="doSearch(${p})">${p}</button>`)
+  if (end < pages) btns.push(`${end < pages - 1 ? '<span style="color:var(--muted);padding:0 6px">…</span>' : ''}<button class="page-btn" onclick="doSearch(${pages})">${pages}</button>`)
+  if (page < pages) btns.push(`<button class="page-btn" onclick="doSearch(${page+1})"><i class="fas fa-chevron-right"></i></button>`)
+  pag.innerHTML = btns.join('')
+}
+
+function openCard(card) {
+  document.getElementById('modalImg').src  = card.imageUrl || ''
+  document.getElementById('modalName').textContent = card.name
+  document.getElementById('modalSeries').textContent = card.series || 'Unknown Series'
+  const t = document.getElementById('modalTier')
+  t.textContent = card.tier; t.className = `tier tier-${card.tier}`
+  document.getElementById('cardModal').style.display = 'flex'
+}
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('cardModal')) document.getElementById('cardModal').style.display = 'none'
+}
+
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+document.addEventListener('DOMContentLoaded', () => doSearch(1))
+</script>
+</body>
+</html>

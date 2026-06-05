@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Konosuba Bot — Daily Reward</title>
+<link rel="icon" type="image/jpeg" href="/img/icon.jpg">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  .daily-wrap { max-width: 520px; margin: 0 auto; }
+
+  .daily-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 32px 28px; text-align: center;
+    position: relative; overflow: hidden; margin-bottom: 20px;
+  }
+  .daily-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--purple), var(--gold), var(--crimson));
+  }
+
+  .daily-icon {
+    font-size: 4rem; display: block; margin-bottom: 12px;
+    animation: bounce 2s ease-in-out infinite;
+  }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+
+  .daily-card h2 { font-size: 1.6rem; font-weight: 900; margin-bottom: 6px; }
+  .daily-card p  { color: var(--muted); font-size: 0.88rem; line-height: 1.6; margin-bottom: 24px; }
+
+  .reward-preview {
+    display: flex; justify-content: center; gap: 24px;
+    margin-bottom: 28px; flex-wrap: wrap;
+  }
+  .reward-box {
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: var(--radius); padding: 16px 20px; text-align: center; min-width: 100px;
+  }
+  .reward-box .rv { font-size: 1.8rem; font-weight: 900; line-height: 1; }
+  .reward-box .rl { font-size: 0.72rem; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .countdown-box {
+    background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.25);
+    border-radius: var(--radius); padding: 18px 24px; margin-bottom: 24px;
+  }
+  .countdown-box .label { font-size: 0.78rem; color: var(--muted); margin-bottom: 6px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  .countdown-box .time  { font-size: 2.2rem; font-weight: 800; color: var(--purple-xs); font-variant-numeric: tabular-nums; }
+
+  .streak-section {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px; margin-bottom: 20px;
+  }
+  .streak-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+  .streak-day {
+    width: 40px; height: 40px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--surface2);
+    display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: var(--muted);
+    flex-direction: column; gap: 1px;
+  }
+  .streak-day.done { background: linear-gradient(135deg, var(--purple), var(--purple2)); border-color: var(--purple); color: #fff; }
+  .streak-day.today { background: linear-gradient(135deg, var(--gold), #b45309); border-color: var(--gold); color: #fff; box-shadow: 0 0 12px rgba(217,119,6,0.4); }
+
+  .claimed-anim { animation: popIn 0.5s cubic-bezier(0.16,1,0.3,1); }
+  @keyframes popIn { from{transform:scale(0.6);opacity:0} to{transform:scale(1);opacity:1} }
+</style>
+</head>
+<body>
+<script src="/js/auth.js"></script>
+<script src="/js/nav.js"></script>
+
+<div class="page">
+  <div class="page-header">
+    <div class="icon" style="background:linear-gradient(135deg,var(--gold),#b45309)"><i class="fas fa-gift"></i></div>
+    <div>
+      <h1>Daily Reward</h1>
+      <p>Claim coins and gems every 24 hours</p>
+    </div>
+  </div>
+
+  <div class="daily-wrap">
+    <div id="noAuth" class="alert alert-info" style="display:none">
+      <i class="fas fa-circle-info"></i>
+      <span><a href="/login" style="color:var(--purple-xs);font-weight:600;">Login</a> or <a href="/signup" style="color:var(--purple-xs);font-weight:600;">Sign up</a> to claim daily rewards.</span>
+    </div>
+
+    <div id="loadingArea" class="loading-center"><div class="spinner"></div><p>Checking reward…</p></div>
+
+    <div id="dailyArea" style="display:none">
+      <div class="daily-card" id="dailyCard">
+        <span class="daily-icon" id="dailyIcon">🎁</span>
+        <h2 class="gradient-text" id="dailyTitle">Daily Reward</h2>
+        <p id="dailySubtitle">Claim your daily coins and gems. Build your streak for bigger rewards!</p>
+
+        <div class="reward-preview">
+          <div class="reward-box">
+            <div class="rv" id="rewardCoins" style="color:var(--gold-lt)">—</div>
+            <div class="rl">🪙 Coins</div>
+          </div>
+          <div class="reward-box">
+            <div class="rv" id="rewardGems" style="color:var(--purple-xs)">—</div>
+            <div class="rl">💎 Gems</div>
+          </div>
+        </div>
+
+        <div id="countdownBox" class="countdown-box" style="display:none">
+          <div class="label">Next reward in</div>
+          <div class="time" id="countdown">--:--:--</div>
+        </div>
+
+        <button id="claimBtn" class="btn btn-primary btn-full btn-lg" onclick="claimDaily()">
+          <i class="fas fa-gift"></i> Claim Reward
+        </button>
+      </div>
+
+      <div class="streak-section">
+        <div class="section-title" style="margin-bottom:0"><i class="fas fa-fire"></i> Current Streak: <span id="streakNum" style="color:var(--crimson-lt)">0</span> days</div>
+        <div class="streak-row" id="streakRow"></div>
+        <div style="text-align:center;color:var(--muted);font-size:0.76rem;margin-top:10px">Every 7-day streak unlocks better rewards!</div>
+      </div>
+
+      <div class="card">
+        <div class="section-title" style="margin-bottom:12px"><i class="fas fa-table-list"></i> Reward Tiers</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${[
+            ['Days 1–6',   '20 coins', '1 gem'],
+            ['Days 7–13',  '23 coins', '1 gem'],
+            ['Days 14–20', '26 coins', '1 gem'],
+            ['Days 21–27', '30 coins', '2 gems'],
+            ['Days 28+',   '35 coins', '2 gems'],
+          ].map(([days,coins,gems],i) => `
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface2);border-radius:var(--radius-sm)">
+            <div style="font-size:0.75rem;font-weight:600;color:var(--muted);min-width:70px">${days}</div>
+            <div style="flex:1;font-size:0.88rem;font-weight:600">🪙 ${coins} · 💎 ${gems}</div>
+            ${i===0?'<span class="badge badge-blue">Current</span>':''}
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let countdownInterval
+
+document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('loadingArea').style.display = 'block'
+  if (!KonoAuth.isLoggedIn()) {
+    document.getElementById('loadingArea').style.display = 'none'
+    document.getElementById('noAuth').style.display = 'flex'
+    return
+  }
+  await loadStatus()
+})
+
+async function loadStatus() {
+  try {
+    const data = await apiFetch('/api/daily/status')
+    document.getElementById('loadingArea').style.display = 'none'
+    document.getElementById('dailyArea').style.display   = 'block'
+
+    const streak  = data.streak || 0
+    const coins   = data.nextCoins || 20
+    const gems    = data.nextGems  || 1
+
+    document.getElementById('rewardCoins').textContent = coins
+    document.getElementById('rewardGems').textContent  = gems
+    document.getElementById('streakNum').textContent   = streak
+    renderStreak(streak)
+
+    if (!data.available) {
+      document.getElementById('dailyTitle').textContent    = 'Already Claimed!'
+      document.getElementById('dailySubtitle').textContent = 'Come back when the timer runs out for your next reward.'
+      document.getElementById('dailyIcon').textContent     = '⏰'
+      document.getElementById('claimBtn').disabled = true
+      document.getElementById('claimBtn').innerHTML = '<i class="fas fa-clock"></i> Come back later'
+      document.getElementById('countdownBox').style.display = 'block'
+      startCountdown(data.remaining)
+    }
+  } catch (e) {
+    document.getElementById('loadingArea').style.display = 'none'
+    document.getElementById('dailyArea').style.display = 'block'
+    showToast(e.message, 'error')
+  }
+}
+
+async function claimDaily() {
+  const btn = document.getElementById('claimBtn')
+  btn.disabled = true
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Claiming…'
+
+  try {
+    const data = await apiFetch('/api/daily', { method: 'POST' })
+    document.getElementById('dailyIcon').textContent     = '🎉'
+    document.getElementById('dailyTitle').textContent    = `You got ${data.coins} coins!`
+    document.getElementById('dailySubtitle').textContent = `+${data.coins} coins & +${data.gems} gem${data.gems!==1?'s':''}! Streak: ${data.streak} days 🔥`
+    document.getElementById('dailyCard').classList.add('claimed-anim')
+    document.getElementById('streakNum').textContent = data.streak
+    renderStreak(data.streak)
+    showToast(data.message, 'success')
+    btn.innerHTML = '<i class="fas fa-check"></i> Claimed!'
+    document.getElementById('countdownBox').style.display = 'block'
+    startCountdown(24 * 3600 * 1000)
+  } catch (e) {
+    showToast(e.message, 'error')
+    btn.disabled = false
+    btn.innerHTML = '<i class="fas fa-gift"></i> Claim Reward'
+  }
+}
+
+function renderStreak(streak) {
+  const row = document.getElementById('streakRow')
+  const days = Math.max(7, Math.ceil(streak / 7) * 7)
+  row.innerHTML = Array.from({ length: Math.min(days, 28) }, (_, i) => {
+    const day = i + 1
+    const cls  = day < streak ? 'done' : day === streak ? 'today' : ''
+    return `<div class="streak-day ${cls}"><span>${day===streak?'🔥':'✓'}</span><span>${day}</span></div>`
+  }).join('')
+}
+
+function startCountdown(ms) {
+  clearInterval(countdownInterval)
+  let remaining = ms
+  function tick() {
+    if (remaining <= 0) { clearInterval(countdownInterval); return }
+    const h = Math.floor(remaining / 3600000)
+    const m = Math.floor((remaining % 3600000) / 60000)
+    const s = Math.floor((remaining % 60000) / 1000)
+    document.getElementById('countdown').textContent = `${pad(h)}:${pad(m)}:${pad(s)}`
+    remaining -= 1000
+  }
+  tick()
+  countdownInterval = setInterval(tick, 1000)
+}
+
+function pad(n) { return String(n).padStart(2, '0') }
+</script>
+</body>
+</html>

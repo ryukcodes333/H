@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Konosuba Bot — Leaderboard</title>
+<link rel="icon" type="image/jpeg" href="/img/icon.jpg">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  .lb-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 22px; }
+  .lb-tab {
+    padding: 8px 18px; border-radius: 99px;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--muted); font-size: 0.83rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+    font-family: 'Poppins', sans-serif;
+  }
+  .lb-tab:hover { border-color: var(--purple); color: var(--purple-lt); }
+  .lb-tab.active { background: var(--purple); border-color: var(--purple); color: #fff; }
+
+  .lb-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .lb-row {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 18px;
+    display: flex; align-items: center; gap: 14px;
+    transition: all 0.2s;
+  }
+  .lb-row:hover { border-color: var(--border2); }
+  .lb-row.top-3 { border-color: rgba(217,119,6,0.3); background: rgba(217,119,6,0.04); }
+
+  .lb-pos { font-size: 1.1rem; font-weight: 800; min-width: 28px; text-align: center; }
+  .lb-avatar {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--purple), var(--crimson));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; font-weight: 700; color: #fff; flex-shrink: 0;
+  }
+  .lb-info { flex: 1; min-width: 0; }
+  .lb-name { font-size: 0.95rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lb-sub  { font-size: 0.76rem; color: var(--muted); margin-top: 2px; }
+  .lb-val  { font-size: 1rem; font-weight: 800; text-align: right; white-space: nowrap; }
+  .lb-val-sub { font-size: 0.72rem; color: var(--muted); text-align: right; }
+
+  .medal-1 { color: #fcd34d; }
+  .medal-2 { color: #e2e8f0; }
+  .medal-3 { color: #cd7c3b; }
+
+  .role-badge { font-size: 0.68rem; }
+</style>
+</head>
+<body>
+<script src="/js/auth.js"></script>
+<script src="/js/nav.js"></script>
+
+<div class="page">
+  <div class="page-header">
+    <div class="icon" style="background:linear-gradient(135deg,var(--gold),#b45309)"><i class="fas fa-trophy"></i></div>
+    <div>
+      <h1>Leaderboard</h1>
+      <p>Top 50 players from the bot database</p>
+    </div>
+  </div>
+
+  <div class="lb-tabs">
+    <button class="lb-tab active" onclick="loadLb('xp',this)"><i class="fas fa-star"></i> XP</button>
+    <button class="lb-tab" onclick="loadLb('level',this)"><i class="fas fa-arrow-up"></i> Level</button>
+    <button class="lb-tab" onclick="loadLb('coins',this)"><i class="fas fa-coins"></i> Coins</button>
+    <button class="lb-tab" onclick="loadLb('wins',this)"><i class="fas fa-dragon"></i> Pokémon Wins</button>
+    <button class="lb-tab" onclick="loadLb('rep',this)"><i class="fas fa-heart"></i> Reputation</button>
+  </div>
+
+  <div id="lbList" class="lb-list">
+    <div class="loading-center"><div class="spinner"></div><p>Loading leaderboard…</p></div>
+  </div>
+</div>
+
+<script>
+let currentLbType = 'xp'
+
+const ROLE_ICONS = { owner: '👑', guardian: '⚔️', mod: '🛡️', premium: '⭐', member: '' }
+const TYPE_VAL = {
+  xp:    u => ({ val: (u.xp||0).toLocaleString(),           sub: `Level ${u.level||1}`,                  icon: '⭐' }),
+  level: u => ({ val: `Lv. ${u.level||1}`,                   sub: `${(u.xp||0).toLocaleString()} XP`,     icon: '🔺' }),
+  coins: u => ({ val: ((u.wallet||0)+(u.bank||0)).toLocaleString(), sub: `💳 Bank: ${(u.bank||0).toLocaleString()}`, icon: '💰' }),
+  wins:  u => ({ val: `${u.pokemon_wins||0} Wins`,            sub: `Pokémon trainer`,                      icon: '🏆' }),
+  rep:   u => ({ val: `${u.reputation||0} Rep`,               sub: `${u.title||'Member'}`,                 icon: '💜' }),
+}
+
+async function loadLb(type, el) {
+  currentLbType = type
+  document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'))
+  if (el) el.classList.add('active')
+
+  document.getElementById('lbList').innerHTML = '<div class="loading-center"><div class="spinner"></div><p>Loading…</p></div>'
+  try {
+    const data = await fetch(`/api/leaderboard?type=${type}`).then(r => r.json())
+    renderLb(data.users || [], type)
+  } catch {
+    document.getElementById('lbList').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>Failed to load</h3><p>Try again later.</p></div>'
+  }
+}
+
+function renderLb(users, type) {
+  if (!users.length) {
+    document.getElementById('lbList').innerHTML = '<div class="empty-state"><i class="fas fa-users-slash"></i><h3>No players yet</h3></div>'
+    return
+  }
+
+  const getter = TYPE_VAL[type] || TYPE_VAL.xp
+  const myPhone = KonoAuth.getUser()?.phone
+
+  document.getElementById('lbList').innerHTML = users.map((u, i) => {
+    const pos   = i + 1
+    const info  = getter(u)
+    const isSelf = u.phone === myPhone
+    const avatar = (u.name || '?').charAt(0).toUpperCase()
+    const roleIcon = ROLE_ICONS[u.role] || ''
+    const medals = ['🥇','🥈','🥉']
+    const posDisplay = pos <= 3 ? medals[pos-1] : `#${pos}`
+
+    return `
+      <div class="lb-row ${pos <= 3 ? 'top-3' : ''}" ${isSelf ? 'style="border-color:var(--purple);background:rgba(124,58,237,0.07)"' : ''}>
+        <div class="lb-pos ${pos===1?'medal-1':pos===2?'medal-2':pos===3?'medal-3':''}">${posDisplay}</div>
+        <div class="lb-avatar">${avatar}</div>
+        <div class="lb-info">
+          <div class="lb-name">${escHtml(u.name||'Unknown')} ${roleIcon} ${u.premium?'⭐':''} ${isSelf?'<span class="badge badge-purple" style="font-size:0.65rem;">You</span>':''}</div>
+          <div class="lb-sub">${escHtml(u.phone ? `...${u.phone.slice(-4)}` : '')}</div>
+        </div>
+        <div>
+          <div class="lb-val gradient-text">${info.val}</div>
+          <div class="lb-val-sub">${info.sub}</div>
+        </div>
+      </div>`
+  }).join('')
+}
+
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+document.addEventListener('DOMContentLoaded', () => loadLb('xp', null))
+</script>
+</body>
+</html>

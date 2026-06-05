@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Konosuba Bot — Profile</title>
+<link rel="icon" type="image/jpeg" href="/img/icon.jpg">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  .profile-hero {
+    background: linear-gradient(135deg, var(--surface), var(--surface2));
+    border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 28px; margin-bottom: 20px; position: relative; overflow: hidden;
+  }
+  .profile-hero::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--purple), var(--crimson), var(--blue));
+  }
+  .profile-top { display: flex; align-items: flex-start; gap: 18px; flex-wrap: wrap; }
+  .profile-avatar {
+    width: 72px; height: 72px; border-radius: 18px;
+    background: linear-gradient(135deg, var(--purple), var(--crimson));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; font-weight: 800; color: #fff;
+    border: 2px solid var(--border2); flex-shrink: 0;
+    overflow: hidden;
+  }
+  .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .profile-name { font-size: 1.4rem; font-weight: 800; }
+  .profile-title { color: var(--muted); font-size: 0.82rem; margin-top: 3px; }
+  .profile-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .profile-bio { color: var(--muted); font-size: 0.85rem; margin-top: 10px; line-height: 1.5; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat-mini {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .stat-mini .icon { font-size: 1.3rem; }
+  .stat-mini .info .val { font-size: 0.97rem; font-weight: 700; }
+  .stat-mini .info .lbl { font-size: 0.72rem; color: var(--muted); }
+
+  .section-title { font-size: 0.78rem; font-weight: 700; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+  .inv-list { display: flex; flex-direction: column; gap: 8px; }
+  .inv-row {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .inv-emoji { font-size: 1.4rem; }
+  .inv-name  { font-size: 0.9rem; font-weight: 600; flex: 1; }
+  .inv-qty   { background: rgba(124,58,237,0.15); color: var(--purple-lt); border-radius: 99px; padding: 2px 10px; font-size: 0.82rem; font-weight: 700; }
+
+  .mini-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
+  .mini-card { border-radius: 8px; overflow: hidden; background: var(--surface2); border: 1px solid var(--border); }
+  .mini-card img { width: 100%; aspect-ratio: 3/4; object-fit: cover; display: block; }
+
+  .edit-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 16px; }
+  .edit-row .input { flex: 1; min-width: 160px; }
+
+  .xp-bar-wrap { margin: 12px 0; }
+  .xp-bar-bg { height: 8px; background: var(--surface3); border-radius: 99px; overflow: hidden; }
+  .xp-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--purple), var(--crimson)); transition: width 1s; }
+  .xp-label { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+<script src="/js/auth.js"></script>
+<script src="/js/nav.js"></script>
+
+<div class="page" id="mainPage">
+  <div class="page-header">
+    <div class="icon"><i class="fas fa-user-circle"></i></div>
+    <div>
+      <h1>My Profile</h1>
+      <p>Your linked WhatsApp + Web account</p>
+    </div>
+  </div>
+  <div id="content">
+    <div class="loading-center"><div class="spinner"></div><p>Loading profile…</p></div>
+  </div>
+</div>
+
+<script>
+const SHOP_EMOJIS = {
+  sword:'⚔️',shield:'🛡️',bow:'🏹',dagger:'🗡️',axe:'🪓',staff_wep:'🪄',spear:'🔱',
+  armor:'🥋',helmet:'⛑️',boots:'👟',potion:'🧪',elixir:'💙',energy:'⚡',antidote:'💊',
+  bomb:'💣',ticket:'🎟️',pickaxe:'⛏️',fishingrod:'🎣',map:'🗺️',lantern:'🏮',
+  ring:'💍',amulet:'📿',cloak:'🧣',bank_note:'💵',bank_note_100k:'💴',bank_note_500k:'💶',bank_note_1m:'💷'
+}
+const SHOP_NAMES = {
+  sword:'Sword',shield:'Shield',bow:'Bow',dagger:'Dagger',axe:'Battle Axe',staff_wep:'Magic Staff',
+  spear:'Spear',armor:'Iron Armor',helmet:'Steel Helmet',boots:'Shadow Boots',potion:'Health Potion',
+  elixir:'Mana Elixir',energy:'Energy Drink',antidote:'Antidote',bomb:'Shadow Bomb',ticket:'Luck Ticket',
+  pickaxe:'Pickaxe',fishingrod:'Fishing Rod',map:'Treasure Map',lantern:'Shadow Lantern',
+  ring:'Power Ring',amulet:'Mana Amulet',cloak:'Shadow Cloak',bank_note:'Bank Note',
+  bank_note_100k:'Bank Note (100K)',bank_note_500k:'Bank Note (500K)',bank_note_1m:'Bank Note (1M)'
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!KonoAuth.requireAuth()) return
+
+  try {
+    const data = await apiFetch('/api/profile')
+    renderProfile(data)
+  } catch (e) {
+    document.getElementById('content').innerHTML = `<div class="alert alert-error"><i class="fas fa-circle-exclamation"></i> ${e.message}</div>`
+  }
+})
+
+function renderProfile({ user, cards, pokemon, inventory }) {
+  const initial = (user.name || '?').charAt(0).toUpperCase()
+  const xpForNext = (user.level || 1) * 500
+  const xpPct = Math.min(100, Math.round(((user.xp || 0) % xpForNext) / xpForNext * 100))
+
+  const roleColors = { owner:'badge-gold', guardian:'badge-crimson', mod:'badge-purple', premium:'badge-green', member:'badge-blue' }
+  const roleBadge = `<span class="badge ${roleColors[user.role]||'badge-blue'}">${user.role||'member'}</span>`
+  const premBadge = user.premium ? '<span class="badge badge-gold">⭐ Premium</span>' : ''
+
+  document.getElementById('content').innerHTML = `
+    <!-- Hero -->
+    <div class="profile-hero">
+      <div class="profile-top">
+        <div class="profile-avatar">
+          ${user.profile_pp ? `<img src="${user.profile_pp}" onerror="this.style.display='none'">` : ''}
+          ${initial}
+        </div>
+        <div style="flex:1">
+          <div class="profile-name">${escHtml(user.name||'Adventurer')}</div>
+          <div class="profile-title">${escHtml(user.title||'Newcomer')} • <span style="color:var(--muted2)">...${(user.phone||'').slice(-4)}</span></div>
+          <div class="profile-badges">${roleBadge}${premBadge}</div>
+          ${user.bio ? `<div class="profile-bio">${escHtml(user.bio)}</div>` : ''}
+        </div>
+      </div>
+      <div class="xp-bar-wrap">
+        <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--muted);margin-bottom:4px">
+          <span>Level ${user.level||1}</span><span>${(user.xp||0).toLocaleString()} XP</span>
+        </div>
+        <div class="xp-bar-bg"><div class="xp-bar-fill" id="xpBar" style="width:0%"></div></div>
+        <div class="xp-label"><span>${xpPct}% to Level ${(user.level||1)+1}</span></div>
+      </div>
+    </div>
+    <script>setTimeout(()=>{const b=document.getElementById('xpBar');if(b)b.style.width='${xpPct}%'},100)<\/script>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-mini"><div class="icon">💰</div><div class="info"><div class="val">${(user.wallet||0).toLocaleString()}</div><div class="lbl">Wallet</div></div></div>
+      <div class="stat-mini"><div class="icon">🏦</div><div class="info"><div class="val">${(user.bank||0).toLocaleString()}</div><div class="lbl">Bank</div></div></div>
+      <div class="stat-mini"><div class="icon">💎</div><div class="info"><div class="val">${user.gems||0}</div><div class="lbl">Gems</div></div></div>
+      <div class="stat-mini"><div class="icon">🔥</div><div class="info"><div class="val">${user.streak||0}</div><div class="lbl">Streak</div></div></div>
+      <div class="stat-mini"><div class="icon">🏆</div><div class="info"><div class="val">${user.pokemon_wins||0}</div><div class="lbl">Pokémon Wins</div></div></div>
+      <div class="stat-mini"><div class="icon">💜</div><div class="info"><div class="val">${user.reputation||0}</div><div class="lbl">Reputation</div></div></div>
+    </div>
+
+    <!-- Edit profile -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="section-title"><i class="fas fa-pen"></i> Edit Profile</div>
+      <div class="edit-row">
+        <div class="input-wrap" style="flex:1">
+          <i class="input-icon fas fa-user"></i>
+          <input id="editName" class="input" placeholder="Display name" value="${escHtml(user.name||'')}">
+        </div>
+        <button class="btn btn-primary" onclick="saveProfile()"><i class="fas fa-check"></i> Save</button>
+      </div>
+      <div class="input-wrap">
+        <i class="input-icon fas fa-quote-left"></i>
+        <input id="editBio" class="input" placeholder="Short bio (max 120 chars)" value="${escHtml(user.bio||'')}" maxlength="120">
+      </div>
+    </div>
+
+    <!-- Inventory -->
+    <div class="section-title"><i class="fas fa-backpack"></i> Inventory (${inventory.length} items)</div>
+    ${inventory.length ? `
+    <div class="inv-list" style="margin-bottom:20px">
+      ${inventory.map(i => `
+        <div class="inv-row">
+          <div class="inv-emoji">${SHOP_EMOJIS[i.item]||'📦'}</div>
+          <div class="inv-name">${SHOP_NAMES[i.item]||i.item}</div>
+          <div class="inv-qty">×${i.quantity}</div>
+        </div>`).join('')}
+    </div>` : `<div class="empty-state" style="padding:24px"><i class="fas fa-box-open"></i><h3>Empty inventory</h3><p><a href="/shop" style="color:var(--purple-lt)">Visit the shop</a></p></div>`}
+
+    <!-- Cards -->
+    <div class="section-title"><i class="fas fa-id-card"></i> My Cards (${cards.length})</div>
+    ${cards.length ? `
+    <div class="mini-card-grid" style="margin-bottom:20px">
+      ${cards.slice(0,48).map(uc => {
+        const c = uc.card_id
+        if (!c) return ''
+        return `<div class="mini-card" title="${escHtml(c.name)}">
+          ${c.image_url ? `<img src="${c.image_url}" loading="lazy" onerror="this.outerHTML='<div style=aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:var(--muted)>🃏</div>'">` : '<div style="aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:var(--muted)">🃏</div>'}
+        </div>`
+      }).join('')}
+    </div>` : `<div class="empty-state" style="padding:24px"><i class="fas fa-cards-blank"></i><h3>No cards yet</h3><p>Play the bot to get cards!</p></div>`}
+
+    <!-- Pokémon -->
+    <div class="section-title"><i class="fas fa-dragon"></i> My Pokémon (${pokemon.length})</div>
+    ${pokemon.length ? `
+    <div class="grid-3" style="margin-bottom:20px">
+      ${pokemon.slice(0,12).map(p => `
+        <div class="card card-sm" style="display:flex;align-items:center;gap:12px">
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.pokemon_id}.png" style="width:48px;height:48px;image-rendering:pixelated" onerror="this.style.opacity=0.3">
+          <div>
+            <div style="font-weight:700;text-transform:capitalize;font-size:0.9rem">${escHtml(p.name)}</div>
+            <div style="font-size:0.72rem;color:var(--muted)">Lv.${p.level} • HP ${p.hp||'?'}/${p.max_hp||'?'} ${p.is_shiny?'✨':''}</div>
+          </div>
+        </div>`).join('')}
+    </div>` : `<div class="empty-state" style="padding:24px"><i class="fas fa-dragon"></i><h3>No Pokémon yet</h3><p>Catch one via the bot!</p></div>`}
+
+    <button class="btn btn-danger btn-full" onclick="if(confirm('Log out?')) KonoAuth.logout()">
+      <i class="fas fa-right-from-bracket"></i> Logout
+    </button>
+  `
+}
+
+async function saveProfile() {
+  const name = document.getElementById('editName').value.trim()
+  const bio  = document.getElementById('editBio').value.trim()
+  if (!name) return showToast('Name cannot be empty.', 'error')
+  try {
+    await apiFetch('/api/profile', { method: 'PATCH', body: JSON.stringify({ name, bio }) })
+    showToast('Profile updated!', 'success')
+    const saved = KonoAuth.getUser()
+    if (saved) { saved.name = name; KonoAuth.save(KonoAuth.getToken(), saved) }
+  } catch (e) { showToast(e.message, 'error') }
+}
+
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+</script>
+</body>
+</html>

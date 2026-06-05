@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Konosuba Bot — Shop</title>
+<link rel="icon" type="image/jpeg" href="/img/icon.jpg">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  .type-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .type-tab {
+    padding: 8px 16px; border-radius: 99px;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--muted); font-size: 0.83rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+    font-family: 'Poppins', sans-serif;
+  }
+  .type-tab:hover { border-color: var(--purple); color: var(--purple-lt); }
+  .type-tab.active { background: var(--purple); border-color: var(--purple); color: #fff; }
+
+  .shop-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px;
+    display: flex; flex-direction: column; gap: 10px;
+    transition: all 0.25s;
+  }
+  .shop-item:hover { border-color: var(--border2); transform: translateY(-3px); box-shadow: 0 10px 32px rgba(0,0,0,0.4); }
+
+  .item-emoji { font-size: 2.2rem; }
+  .item-name  { font-size: 0.97rem; font-weight: 700; }
+  .item-desc  { font-size: 0.79rem; color: var(--muted); line-height: 1.5; flex: 1; }
+  .item-footer{ display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
+  .item-price { font-size: 0.88rem; font-weight: 700; color: var(--gold-lt); }
+  .item-price i { color: var(--gold); margin-right: 3px; }
+
+  .wallet-bar {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 18px;
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 20px;
+  }
+  .wallet-bar i { color: var(--gold); font-size: 1.3rem; }
+  .wallet-bar .val { font-weight: 700; font-size: 1.1rem; }
+  .wallet-bar .lbl { color: var(--muted); font-size: 0.78rem; }
+  .login-hint { color: var(--muted); font-size: 0.83rem; }
+</style>
+</head>
+<body>
+<script src="/js/auth.js"></script>
+<script src="/js/nav.js"></script>
+
+<div class="page">
+  <div class="page-header">
+    <div class="icon"><i class="fas fa-store"></i></div>
+    <div>
+      <h1>Item Shop</h1>
+      <p>Buy weapons, armor, tools & consumables</p>
+    </div>
+  </div>
+
+  <div id="walletBar" class="wallet-bar" style="display:none">
+    <i class="fas fa-coins"></i>
+    <div>
+      <div class="val" id="walletAmt">0</div>
+      <div class="lbl">Wallet coins</div>
+    </div>
+  </div>
+
+  <div id="loginHint" class="alert alert-info" style="display:none">
+    <i class="fas fa-circle-info"></i>
+    <span><a href="/login" style="color:var(--purple-xs);font-weight:600;">Login</a> to buy items — coins are shared with the bot.</span>
+  </div>
+
+  <div class="type-tabs" id="typeTabs">
+    <button class="type-tab active" data-type="all" onclick="filterType('all',this)">All</button>
+    <button class="type-tab" data-type="weapon"    onclick="filterType('weapon',this)">⚔️ Weapons</button>
+    <button class="type-tab" data-type="armor"     onclick="filterType('armor',this)">🛡️ Armor</button>
+    <button class="type-tab" data-type="consumable" onclick="filterType('consumable',this)">🧪 Consumables</button>
+    <button class="type-tab" data-type="tool"      onclick="filterType('tool',this)">🔧 Tools</button>
+    <button class="type-tab" data-type="accessory" onclick="filterType('accessory',this)">💍 Accessories</button>
+    <button class="type-tab" data-type="banking"   onclick="filterType('banking',this)">🏦 Banking</button>
+  </div>
+
+  <div class="grid-3" id="shopGrid">
+    <div class="loading-center"><div class="spinner"></div><p>Loading shop…</p></div>
+  </div>
+</div>
+
+<script>
+let allItems = []
+let currentType = 'all'
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (KonoAuth.isLoggedIn()) {
+    document.getElementById('walletBar').style.display = 'flex'
+    try {
+      const p = await apiFetch('/api/profile')
+      document.getElementById('walletAmt').textContent = (p.user.wallet||0).toLocaleString()
+    } catch {}
+  } else {
+    document.getElementById('loginHint').style.display = 'flex'
+  }
+
+  try {
+    const data = await fetch('/api/shop').then(r => r.json())
+    allItems = data.items || []
+    renderItems(allItems)
+  } catch {
+    document.getElementById('shopGrid').innerHTML = '<div class="empty-state"><i class="fas fa-store-slash"></i><h3>Shop unavailable</h3><p>Try again later.</p></div>'
+  }
+})
+
+function filterType(type, el) {
+  currentType = type
+  document.querySelectorAll('.type-tab').forEach(t => t.classList.remove('active'))
+  el.classList.add('active')
+  const filtered = type === 'all' ? allItems : allItems.filter(i => i.type === type)
+  renderItems(filtered)
+}
+
+function renderItems(items) {
+  const grid = document.getElementById('shopGrid')
+  if (!items.length) {
+    grid.innerHTML = '<div class="empty-state"><i class="fas fa-box-open"></i><h3>No items</h3><p>Try another category.</p></div>'
+    return
+  }
+  grid.innerHTML = items.map(item => `
+    <div class="shop-item">
+      <div class="item-emoji">${item.emoji}</div>
+      <div class="item-name">${item.name}</div>
+      <div class="item-desc">${item.desc || ''}</div>
+      <div class="item-footer">
+        <div class="item-price"><i class="fas fa-coins"></i>${item.price.toLocaleString()}</div>
+        <button class="btn btn-primary btn-sm" onclick="buyItem('${item.id}','${item.name}',${item.price})">
+          <i class="fas fa-cart-shopping"></i> Buy
+        </button>
+      </div>
+    </div>`).join('')
+}
+
+async function buyItem(id, name, price) {
+  if (!KonoAuth.isLoggedIn()) { window.location.href = '/login'; return }
+  if (!confirm(`Buy ${name} for ${price.toLocaleString()} coins?`)) return
+  try {
+    const data = await apiFetch('/api/shop/buy', { method: 'POST', body: JSON.stringify({ item_id: id }) })
+    showToast(data.message, 'success')
+    const p = await apiFetch('/api/profile')
+    document.getElementById('walletAmt').textContent = (p.user.wallet||0).toLocaleString()
+  } catch (e) {
+    showToast(e.message, 'error')
+  }
+}
+</script>
+</body>
+</html>
